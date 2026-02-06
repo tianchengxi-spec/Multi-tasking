@@ -104,12 +104,11 @@ const Desktop: React.FC<DesktopProps> = ({
           className="group flex flex-col items-center w-20 mt-[10px] hover:scale-105 transition-transform active:scale-95 outline-none"
         >
           <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all">
-            <svg width="64" height="64" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M61.9562 80H18.0438C8.07195 80 0 71.9179 0 61.9587V18.0413C0 8.08206 8.08319 0 18.0438 0H61.9562C71.928 0 80 8.08206 80 18.0413V61.9475C80 71.9179 71.928 80 61.9562 80Z" fill="#CFCFCD"/>
-              <path d="M54.2102 68.3661H25.7897C22.6419 68.3661 20.0899 65.8144 20.0899 62.667V17.3221C20.0899 14.1747 22.6419 11.623 25.7897 11.623H54.2102C57.358 11.623 59.91 14.1747 59.91 17.3221V62.667C59.91 65.8144 57.358 68.3661 54.2102 68.3661Z" fill="#161616"/>
-              <path d="M53.9179 28.9334H26.082C25.059 28.9334 24.2383 28.1016 24.2383 27.09V17.5354C24.2383 16.5125 25.0702 15.6919 26.082 15.6919H53.9179C54.9409 15.6919 55.7616 16.5237 55.7616 17.5354V27.09Z" fill="#4F4F4F"/>
-              <path d="M51.6694 41.0285C49.4097 41.0285 47.566 39.1962 47.566 36.9256C47.566 34.6662 49.3985 32.8228 51.6694 32.8228C53.9291 32.8228 55.7729 34.655 55.7729 36.9256C55.7729 39.1962 53.9404 41.0285 51.6694 41.0285Z" fill="#FF9528"/>
-            </svg>
+            <img 
+              src="https://is1-ssl.mzstatic.com/image/thumb/Purple122/v4/6d/2f/50/6d2f504e-670d-f53e-329b-839f379207e2/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/512x512bb.jpg" 
+              className="w-full h-full rounded-2xl object-cover" 
+              alt="计算器" 
+            />
           </div>
           <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">计算器</span>
         </button>

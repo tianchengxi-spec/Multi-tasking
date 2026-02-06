@@ -9,8 +9,7 @@ import {
   Settings, 
   Wifi, 
   Battery, 
-  SignalHigh,
-  Calculator
+  SignalHigh
 } from 'lucide-react';
 import { AppType } from './types';
 
@@ -32,6 +31,15 @@ const XiaohongshuIcon = ({ size = 24 }: { size?: number }) => (
   />
 );
 
+const CalculatorIcon = ({ size = 24 }: { size?: number }) => (
+  <img 
+    src="https://is1-ssl.mzstatic.com/image/thumb/Purple122/v4/6d/2f/50/6d2f504e-670d-f53e-329b-839f379207e2/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/512x512bb.jpg" 
+    style={{ width: size, height: size }} 
+    className="rounded-md object-cover"
+    alt="Calculator"
+  />
+);
+
 export const APP_CONFIG = {
   [AppType.NOTES]: { icon: <FileText size={24} />, color: 'bg-amber-100 text-amber-600', border: 'border-amber-200' },
   [AppType.FILES]: { icon: <Folder size={24} />, color: 'bg-blue-100 text-blue-600', border: 'border-blue-200' },
@@ -41,7 +49,7 @@ export const APP_CONFIG = {
   [AppType.SETTINGS]: { icon: <Settings size={24} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.BILIBILI]: { icon: <BilibiliIcon />, color: 'bg-white', border: 'border-pink-100' },
   [AppType.XIAOHONGSHU]: { icon: <XiaohongshuIcon />, color: 'bg-white', border: 'border-red-100' },
-  [AppType.CALCULATOR]: { icon: <Calculator size={24} />, color: 'bg-orange-100 text-orange-600', border: 'border-orange-200' },
+  [AppType.CALCULATOR]: { icon: <CalculatorIcon />, color: 'bg-white', border: 'border-orange-100' },
 };
 
 export const SYSTEM_ICONS = {
