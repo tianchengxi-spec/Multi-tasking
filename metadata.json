@@ -1,0 +1,8 @@
+{
+  "name": "NexusOS Multi-tasking Prototype",
+  "description": "A high-fidelity low-fi prototype for a large-screen tablet OS focusing on seamless multi-tasking, window management, and AI integration.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
