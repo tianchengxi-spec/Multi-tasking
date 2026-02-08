@@ -8,7 +8,8 @@ export enum AppType {
   SETTINGS = 'Settings',
   BILIBILI = '哔哩哔哩',
   XIAOHONGSHU = '小红书',
-  CALCULATOR = '计算器'
+  CALCULATOR = '计算器',
+  ALIPAY = '支付宝'
 }
 
 export type WindowState = 'floating' | 'split-left' | 'split-right' | 'maximized' | 'minimized';

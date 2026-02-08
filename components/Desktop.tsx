@@ -7,6 +7,7 @@ import NotesApp from './apps/NotesApp';
 import BrowserApp from './apps/BrowserApp';
 import FilesApp from './apps/FilesApp';
 import DesktopClock from './DesktopClock';
+import { APP_CONFIG } from '../constants';
 
 interface DesktopProps {
   apps: AppInstance[];
@@ -68,49 +69,26 @@ const Desktop: React.FC<DesktopProps> = ({
           <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">备忘录</span>
         </button>
 
-        {/* Xiaohongshu Shortcut */}
-        <button 
-          onClick={() => onOpenApp(AppType.XIAOHONGSHU)}
-          className="group flex flex-col items-center w-20 mt-[10px] hover:scale-105 transition-transform active:scale-95 outline-none"
-        >
-          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all">
-            <img 
-              src="https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/31/31/85/3131853f-4217-1569-2321-72909185a86d/AppIcon-0-0-1x_U007emarketing-0-7-0-sRGB-85-220.png/512x512bb.jpg" 
-              className="w-full h-full rounded-2xl object-cover" 
-              alt="小红书" 
-            />
-          </div>
-          <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">小红书</span>
-        </button>
-
         {/* Bilibili Shortcut */}
         <button 
           onClick={() => onOpenApp(AppType.BILIBILI)}
           className="group flex flex-col items-center w-20 mt-[10px] hover:scale-105 transition-transform active:scale-95 outline-none"
         >
-          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all">
-            <img 
-              src="https://i0.hdslb.com/bfs/static/jinkela/long/images/512.png" 
-              className="w-full h-full rounded-2xl object-cover" 
-              alt="哔哩哔哩" 
-            />
+          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all overflow-hidden rounded-[1.25rem]">
+            {React.cloneElement(APP_CONFIG[AppType.BILIBILI].icon as React.ReactElement<any>, { size: 64 })}
           </div>
           <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">哔哩哔哩</span>
         </button>
 
-        {/* Calculator Shortcut */}
+        {/* Alipay Shortcut */}
         <button 
-          onClick={() => onOpenApp(AppType.CALCULATOR)}
+          onClick={() => onOpenApp(AppType.ALIPAY)}
           className="group flex flex-col items-center w-20 mt-[10px] hover:scale-105 transition-transform active:scale-95 outline-none"
         >
-          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all">
-            <img 
-              src="https://is1-ssl.mzstatic.com/image/thumb/Purple122/v4/6d/2f/50/6d2f504e-670d-f53e-329b-839f379207e2/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/512x512bb.jpg" 
-              className="w-full h-full rounded-2xl object-cover" 
-              alt="计算器" 
-            />
+          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md group-hover:drop-shadow-xl transition-all overflow-hidden rounded-[1.25rem]">
+            {React.cloneElement(APP_CONFIG[AppType.ALIPAY].icon as React.ReactElement<any>, { size: 64 })}
           </div>
-          <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">计算器</span>
+          <span className="text-[11px] font-bold text-slate-700 px-1 py-0.5 mt-[10px] text-center whitespace-nowrap group-hover:text-slate-900 transition-colors">支付宝</span>
         </button>
       </div>
 

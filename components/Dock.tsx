@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppType } from '../types';
 import { APP_CONFIG } from '../constants';
 
@@ -24,7 +24,7 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
   const [isLongPressed, setIsLongPressed] = useState(false);
   
   const longPressTimer = useRef<any>(null);
-  const startPosRef = useRef<{ x: number; y: number } | null>(null);
+  const pointerIdRef = useRef<number | null>(null);
 
   const allApps = [
     AppType.NOTES,
@@ -33,16 +33,56 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
     AppType.AI_ASSISTANT,
     AppType.CALENDAR,
     AppType.BILIBILI,
+    AppType.ALIPAY,
     AppType.SETTINGS
   ];
 
-  const handlePointerDown = (e: React.PointerEvent, type: AppType) => {
-    // If we're already returning an app, ignore new interactions
-    if (draggingApp?.isReturning) return;
+  useEffect(() => {
+    const handleGlobalMove = (e: PointerEvent) => {
+      if (draggingApp && isLongPressed && !draggingApp.isReturning) {
+        setDraggingApp(prev => prev ? { 
+          ...prev, 
+          currentX: e.clientX, 
+          currentY: e.clientY 
+        } : null);
+      }
+    };
 
+    const handleGlobalUp = (e: PointerEvent) => {
+      if (draggingApp && isLongPressed) {
+        setIsLongPressed(false);
+        setDraggingApp(prev => prev ? { 
+          ...prev, 
+          currentX: prev.startX, 
+          currentY: prev.startY, 
+          isReturning: true 
+        } : null);
+
+        setTimeout(() => {
+          setDraggingApp(null);
+          pointerIdRef.current = null;
+        }, 500);
+      } else {
+        clearTimer();
+      }
+    };
+
+    if (isLongPressed) {
+      window.addEventListener('pointermove', handleGlobalMove);
+      window.addEventListener('pointerup', handleGlobalUp);
+    }
+
+    return () => {
+      window.removeEventListener('pointermove', handleGlobalMove);
+      window.removeEventListener('pointerup', handleGlobalUp);
+    };
+  }, [isLongPressed, draggingApp]);
+
+  const handlePointerDown = (e: React.PointerEvent, type: AppType) => {
+    if (draggingApp?.isReturning) return;
     const x = e.clientX;
     const y = e.clientY;
-    startPosRef.current = { x, y };
+    pointerIdRef.current = e.pointerId;
 
     longPressTimer.current = setTimeout(() => {
       setIsLongPressed(true);
@@ -54,51 +94,13 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
         currentY: y,
         isReturning: false
       });
-      // Haptic feedback
-      if (window.navigator.vibrate) window.navigator.vibrate(40);
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
     }, 500);
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!longPressTimer.current && !draggingApp) return;
-    
-    const x = e.clientX;
-    const y = e.clientY;
-
-    if (draggingApp && !draggingApp.isReturning) {
-      setDraggingApp(prev => prev ? { ...prev, currentX: x, currentY: y } : null);
-    } else if (startPosRef.current) {
-      const dx = x - startPosRef.current.x;
-      const dy = y - startPosRef.current.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // If pointer moves significantly before long press, cancel it
-      if (distance > 15) {
-        clearTimer();
-      }
-    }
-  };
-
   const handlePointerUp = (e: React.PointerEvent, type: AppType) => {
-    const wasLongPressed = isLongPressed;
-    clearTimer();
-
-    if (wasLongPressed && draggingApp) {
-      // Start return animation
-      setIsLongPressed(false);
-      setDraggingApp(prev => prev ? { 
-        ...prev, 
-        currentX: prev.startX, 
-        currentY: prev.startY, 
-        isReturning: true 
-      } : null);
-
-      // Clean up after animation finishes (500ms)
-      setTimeout(() => {
-        setDraggingApp(null);
-      }, 500);
-    } else if (!draggingApp?.isReturning) {
-      // Regular click
+    if (!isLongPressed && !draggingApp?.isReturning) {
+      clearTimer();
       onOpenApp(type);
     }
   };
@@ -108,35 +110,36 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    startPosRef.current = null;
   };
 
   const getDragStyle = (type: AppType): React.CSSProperties => {
     if (draggingApp?.type !== type) return {};
 
-    const offsetX = draggingApp.currentX - draggingApp.startX;
-    const offsetY = draggingApp.currentY - draggingApp.startY;
+    const dx = draggingApp.currentX - draggingApp.startX;
+    const dy = draggingApp.currentY - draggingApp.startY;
     const isReturning = draggingApp.isReturning;
+    
+    // Dynamic shadow based on app brand
+    const shadowColor = type === AppType.XIAOHONGSHU ? 'rgba(255, 36, 66, 0.4)' : (type === AppType.ALIPAY ? 'rgba(0, 159, 232, 0.4)' : 'rgba(0, 0, 0, 0.4)');
 
     return {
-      transform: `translate(${offsetX}px, ${offsetY}px) scale(${isReturning ? 1 : 1.18})`,
-      zIndex: 1000,
-      opacity: isReturning ? 1 : 0.9,
-      // No transition while actively dragging for 1:1 response, but smooth transition for return
-      transition: isLongPressed ? 'none' : 'transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.3s ease',
-      filter: isReturning ? 'none' : 'drop-shadow(0 30px 40px rgb(0 0 0 / 0.3))',
-      pointerEvents: 'none' // Allow pointer events to pass through to container
+      transform: `translate(${dx}px, ${dy}px) scale(${isReturning ? 1 : 1.25})`,
+      zIndex: 9999,
+      opacity: isReturning ? 1 : 0.98,
+      transition: isLongPressed ? 'none' : 'transform 0.5s cubic-bezier(0.3, 1.5, 0.6, 1), opacity 0.3s ease',
+      filter: isReturning ? 'none' : `drop-shadow(0 40px 60px ${shadowColor})`,
+      pointerEvents: 'none',
+      position: 'relative'
     };
   };
 
   return (
     <div 
-      className={`h-20 shrink-0 flex items-center justify-center pointer-events-none pb-4 transition-all duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'
+      className={`h-24 shrink-0 flex items-center justify-center pointer-events-none pb-6 transition-all duration-700 ease-[cubic-bezier(0.33,1,0.68,1)] ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-28 opacity-0'
       }`}
-      onPointerMove={handlePointerMove}
     >
-      <div className="bg-white/70 backdrop-blur-xl border border-white/40 shadow-2xl rounded-3xl p-2.5 flex items-end gap-2.5 pointer-events-auto">
+      <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] p-3 flex items-end gap-3 pointer-events-auto">
         {allApps.map((type) => {
           const config = APP_CONFIG[type];
           const isActive = activeAppType === type;
@@ -149,23 +152,22 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
               onPointerDown={(e) => handlePointerDown(e, type)}
               onPointerUp={(e) => handlePointerUp(e, type)}
               onPointerLeave={() => !isLongPressed && clearTimer()}
+              onPointerCancel={clearTimer}
               style={getDragStyle(type)}
-              className={`relative group transition-all duration-300 touch-none select-none ${
+              className={`relative group transition-all duration-300 touch-none select-none outline-none ${
                 !isThisDragging ? 'hover:-translate-y-2 active:scale-90' : ''
               }`}
             >
-              <div className={`${config.color} p-3 rounded-2xl shadow-sm border ${config.border} flex items-center justify-center transition-all duration-300 group-hover:shadow-lg group-hover:shadow-slate-200`}>
+              <div className={`${config.color} w-14 h-14 rounded-[1.25rem] shadow-sm border ${config.border} flex items-center justify-center transition-all duration-300 group-hover:shadow-xl overflow-hidden`}>
                 {config.icon}
               </div>
               
-              {/* Active Indicator */}
               {isOpen && !isThisDragging && (
-                <div className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-blue-600 w-4 rounded-full' : 'bg-slate-400'} transition-all`} />
+                <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${isActive ? 'bg-blue-600 w-4' : 'bg-slate-400'} transition-all duration-300`} />
               )}
               
-              {/* Tooltip - hidden during drag */}
               {!isThisDragging && (
-                <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1 bg-slate-800 text-white text-[10px] font-bold rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none uppercase tracking-widest">
+                <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10">
                   {type}
                 </div>
               )}
@@ -173,11 +175,12 @@ const Dock: React.FC<DockProps> = ({ openApps, onOpenApp, activeAppType, isVisib
           );
         })}
         
-        <div className="w-[1px] h-8 bg-slate-200/50 mx-1 self-center" />
+        <div className="w-[1px] h-10 bg-slate-300/40 mx-1 self-center" />
         
-        {/* Placeholder for recent/suggested apps */}
-        <div className="flex gap-2.5">
-           <div className="w-12 h-12 bg-slate-100/50 border border-slate-200 rounded-2xl animate-pulse" />
+        <div className="flex items-center justify-center w-14 h-14 bg-slate-200/30 border border-slate-200/50 rounded-[1.25rem] group transition-colors">
+           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse mx-0.5" />
+           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.2s] mx-0.5" />
+           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.4s] mx-0.5" />
         </div>
       </div>
     </div>
