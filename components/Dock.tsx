@@ -89,6 +89,7 @@ const Dock: React.FC<DockProps> = ({
                 }
               }}
               className={`relative group transition-all duration-300 touch-none select-none outline-none hover:-translate-y-2 active:scale-90`}
+              style={{ touchAction: 'none' }}
             >
               <div className={`${config.color} w-14 h-14 rounded-[1.25rem] shadow-sm border ${config.border} flex items-center justify-center transition-all duration-300 group-hover:shadow-xl overflow-hidden`}>
                 {config.icon}

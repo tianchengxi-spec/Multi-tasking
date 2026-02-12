@@ -29,6 +29,20 @@ const App: React.FC = () => {
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
   const hotZoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Prevent scrolling on mobile when dragging
+  useEffect(() => {
+    const preventDefault = (e: TouchEvent) => {
+      if (dragIcon || resizingDividerIndex !== null) {
+        e.preventDefault();
+      }
+    };
+
+    if (dragIcon || resizingDividerIndex !== null) {
+      window.addEventListener('touchmove', preventDefault, { passive: false });
+    }
+    return () => window.removeEventListener('touchmove', preventDefault);
+  }, [dragIcon, resizingDividerIndex]);
+
   const splitApps = useMemo(() => 
     apps.filter(a => a.state.startsWith('split-')),
     [apps]
@@ -195,22 +209,17 @@ const App: React.FC = () => {
       if (closingApp.state.startsWith('split-')) {
         const remainingSplits = filteredApps.filter(a => a.state.startsWith('split-'));
         
-        // Quad Split (4 apps) Logic
         if (splitBefore.length === 4) {
           return filteredApps.map(a => {
-            // If we close a left side window, the other left window fills the left half
             if (closingApp.state === 'split-left-top' && a.state === 'split-left-bottom') return { ...a, state: 'split-left' as WindowState };
             if (closingApp.state === 'split-left-bottom' && a.state === 'split-left-top') return { ...a, state: 'split-left' as WindowState };
-            // If we close a right side window, the other right window fills the right half
             if (closingApp.state === 'split-right-top' && a.state === 'split-right-bottom') return { ...a, state: 'split-right' as WindowState };
             if (closingApp.state === 'split-right-bottom' && a.state === 'split-right-top') return { ...a, state: 'split-right' as WindowState };
             return a;
           });
         }
 
-        // 3 App T-Split or 1:1:1 Collapse Logic
         if (remainingSplits.length === 2) {
-          // Case: 1:1:1 Vertical Split collapse
           const wasTripleVertical = prev.some(a => a.state === 'split-middle');
           if (wasTripleVertical) {
             setSplitRatios([0.5, 0.66]);
@@ -223,7 +232,6 @@ const App: React.FC = () => {
             });
           }
 
-          // Case: T-Split (Left 1, Right 2) collapse
           const wasRightTSplit = prev.some(a => a.state === 'split-right-top');
           if (wasRightTSplit) {
             setSplitRatios([0.5, 0.66]);
@@ -240,7 +248,6 @@ const App: React.FC = () => {
             });
           }
 
-          // Case: T-Split (Left 2, Right 1) collapse (result of Quad split closing a left window)
           const wasLeftTSplit = prev.some(a => a.state === 'split-left-top');
           if (wasLeftTSplit) {
             setSplitRatios([0.5, 0.66]);
@@ -258,7 +265,6 @@ const App: React.FC = () => {
           }
         }
         
-        // Handle collapse to single full screen
         if (remainingSplits.length === 1) {
           return filteredApps.map(a => a.id === remainingSplits[0].id ? { ...a, state: 'maximized' as WindowState } : a);
         }
@@ -268,7 +274,7 @@ const App: React.FC = () => {
     if (activeAppId === id) setActiveAppId(null);
   }, [activeAppId]);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handlePointerMove = (e: React.PointerEvent) => {
     if (dragIcon) {
       const x = e.clientX;
       const y = e.clientY;
@@ -311,9 +317,10 @@ const App: React.FC = () => {
   return (
     <div 
       className="h-screen w-screen flex flex-col bg-slate-50 overflow-hidden relative border-[12px] border-slate-900 rounded-[3rem] shadow-2xl select-none"
-      onMouseUp={handlePointerUpGlobal}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handlePointerUpGlobal}
+      onPointerUp={handlePointerUpGlobal}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerUpGlobal}
+      style={{ touchAction: 'none' }}
     >
       <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC]">
         <SystemBar />
@@ -340,22 +347,16 @@ const App: React.FC = () => {
         <>
           <div 
             className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-            style={{ left: `${splitRatios[0] * 100}%`, width: '20px', transform: 'translateX(-50%)' }}
-            onMouseDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
+            style={{ left: `${splitRatios[0] * 100}%`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+            onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
           >
             <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 0 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
-            {dragIcon?.isOverDivider && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-12 h-24 rounded-full bg-rose-500/20 blur-xl animate-pulse" />
-                <div className="w-1.5 h-16 rounded-full bg-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.6)]" />
-              </div>
-            )}
           </div>
           {isTripleSplit && !isTSplit && !isQuadSplit && (
             <div 
               className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-              style={{ left: `${splitRatios[1] * 100}%`, width: '20px', transform: 'translateX(-50%)' }}
-              onMouseDown={(e) => { e.stopPropagation(); setResizingDividerIndex(1); }}
+              style={{ left: `${splitRatios[1] * 100}%`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+              onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(1); }}
             >
               <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 1 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
             </div>
