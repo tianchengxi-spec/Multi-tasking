@@ -45,6 +45,68 @@ const App: React.FC = () => {
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
   const [snapping, setSnapping] = useState<SnappingState | null>(null);
   const intentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastDragPos = useRef({ x: 0, y: 0 });
+
+  // Handle detection of "hanging" / hovering in place
+  const checkHoverIntent = useCallback((x: number, y: number, screenWidth: number, screenHeight: number) => {
+    if (!dragIcon) return;
+
+    const dist = Math.sqrt(Math.pow(x - lastDragPos.current.x, 2) + Math.pow(y - lastDragPos.current.y, 2));
+    lastDragPos.current = { x, y };
+
+    if (dist < 10) {
+      if (!intentTimer.current) {
+        intentTimer.current = setTimeout(() => {
+          // Identify Zone at hover location
+          const isOverFloating = x > screenWidth - 256 && y < 256;
+          
+          if (isOverFloating) {
+            setDragIcon(prev => prev ? { 
+              ...prev, x, y, 
+              isOverFloatingZone: true, 
+              isLeftIntentConfirmed: false, 
+              isRightIntentConfirmed: false,
+              isOverLeftZone: false,
+              isOverRightZone: false
+            } : null);
+          } else {
+            const isLeft = x < screenWidth / 2;
+            setDragIcon(prev => {
+              if (!prev) return null;
+              if (window.navigator.vibrate) window.navigator.vibrate(30);
+              return {
+                ...prev,
+                isLeftIntentConfirmed: isLeft,
+                isRightIntentConfirmed: !isLeft,
+                isOverLeftZone: isLeft,
+                isOverRightZone: !isLeft,
+                isOverFloatingZone: false
+              };
+            });
+          }
+        }, 500);
+      }
+    } else {
+      // Clear intent if moving significantly
+      if (intentTimer.current) {
+        clearTimeout(intentTimer.current);
+        intentTimer.current = null;
+      }
+      setDragIcon(prev => {
+        if (!prev) return null;
+        return { 
+          ...prev, 
+          x, 
+          y, 
+          isOverFloatingZone: false,
+          isLeftIntentConfirmed: false,
+          isRightIntentConfirmed: false,
+          isOverLeftZone: false,
+          isOverRightZone: false
+        };
+      });
+    }
+  }, [dragIcon]);
 
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
@@ -358,65 +420,35 @@ const App: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
       const screenWidth = window.innerWidth;
-      
-      const isOverLeft = hasBackgroundApp && x < 80;
-      const isOverRight = hasBackgroundApp && x > screenWidth - 80;
+      const screenHeight = window.innerHeight;
       
       const dividerX = splitRatios[0] * screenWidth;
       const isOverDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < window.innerHeight - 100;
-
-      // New Floating Zone Trigger: Top-right corner area (approx 300x400)
-      const isOverFloating = hasBackgroundApp && !isOverLeft && !isOverRight && !isOverDiv && x > screenWidth - 320 && y < 420;
-
-      // Handle Intent Timer for Split Zones
-      if (isOverLeft && !dragIcon.isOverLeftZone) {
-        if (intentTimer.current) clearTimeout(intentTimer.current);
-        intentTimer.current = setTimeout(() => {
-          setDragIcon(prev => prev ? { ...prev, isLeftIntentConfirmed: true } : null);
-          if (window.navigator.vibrate) window.navigator.vibrate([30]);
-        }, 500);
-      } else if (!isOverLeft && dragIcon.isOverLeftZone) {
-        if (intentTimer.current) {
-          clearTimeout(intentTimer.current);
-          intentTimer.current = null;
-        }
-      }
-
-      if (isOverRight && !dragIcon.isOverRightZone) {
-        if (intentTimer.current) clearTimeout(intentTimer.current);
-        intentTimer.current = setTimeout(() => {
-          setDragIcon(prev => prev ? { ...prev, isRightIntentConfirmed: true } : null);
-          if (window.navigator.vibrate) window.navigator.vibrate([30]);
-        }, 500);
-      } else if (!isOverRight && dragIcon.isOverRightZone) {
-        if (intentTimer.current) {
-          clearTimeout(intentTimer.current);
-          intentTimer.current = null;
-        }
-      }
 
       if (isOverDiv && !dragIcon.isOverDivider && window.navigator.vibrate) {
         window.navigator.vibrate(20);
       }
 
-      setDragIcon(prev => {
-        if (!prev) return null;
-        // Keep intent flags if zone is still active
-        const newLeftIntent = isOverLeft ? prev.isLeftIntentConfirmed : false;
-        const newRightIntent = isOverRight ? prev.isRightIntentConfirmed : false;
-        
-        return { 
+      // If over divider, we handle it immediately as it's a specific drop target
+      if (isOverDiv) {
+        if (intentTimer.current) {
+          clearTimeout(intentTimer.current);
+          intentTimer.current = null;
+        }
+        setDragIcon(prev => prev ? { 
           ...prev, 
-          x, 
-          y, 
-          isOverFloatingZone: isOverFloating, 
-          isOverLeftZone: isOverLeft, 
-          isOverRightZone: isOverRight, 
-          isOverDivider: isOverDiv,
-          isLeftIntentConfirmed: newLeftIntent,
-          isRightIntentConfirmed: newRightIntent
-        };
-      });
+          x, y, 
+          isOverDivider: true, 
+          isOverFloatingZone: false,
+          isLeftIntentConfirmed: false,
+          isRightIntentConfirmed: false,
+          isOverLeftZone: false,
+          isOverRightZone: false
+        } : null);
+      } else {
+        // Use the smart hover intent detection for everything else
+        checkHoverIntent(x, y, screenWidth, screenHeight);
+      }
     }
 
     if (resizingDividerIndex !== null) {
@@ -466,7 +498,14 @@ const App: React.FC = () => {
         });
         setDragIcon(null);
       } else if (isOverFloatingZone) {
-        openApp(type, 'floating');
+        setSnapping({
+          type,
+          startX: x,
+          startY: y,
+          targetX: window.innerWidth - 180 - 16, // Near the center of the 360-wide floating window target x-center
+          targetY: 300, // Roughly where the floating window top-half center would be
+          targetState: 'floating'
+        });
         setDragIcon(null);
       } else {
         setDragIcon(null);
