@@ -18,6 +18,8 @@ interface DesktopProps {
   onFocusApp: (id: string) => void;
   onOpenApp: (type: AppType) => void;
   splitRatios: [number, number];
+  onDragAppStart?: (id: string, x: number, y: number) => void;
+  onClickWallpaper?: () => void;
 }
 
 const Desktop: React.FC<DesktopProps> = ({ 
@@ -27,7 +29,9 @@ const Desktop: React.FC<DesktopProps> = ({
   onMinimizeApp, 
   onFocusApp,
   onOpenApp,
-  splitRatios
+  splitRatios,
+  onDragAppStart,
+  onClickWallpaper
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
@@ -44,7 +48,14 @@ const Desktop: React.FC<DesktopProps> = ({
   };
 
   return (
-    <div className="relative flex-1 bg-[#F8FAFC] overflow-hidden">
+    <div 
+      className="relative flex-1 bg-[#F8FAFC] overflow-hidden cursor-default"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClickWallpaper) {
+          onClickWallpaper();
+        }
+      }}
+    >
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
       <DesktopClock />
       <div className="absolute top-40 left-12 grid grid-cols-4 gap-x-12 gap-y-10 z-0">
@@ -62,6 +73,7 @@ const Desktop: React.FC<DesktopProps> = ({
           isTripleVertical={isTripleVertical}
           hasSidebarLeft={hasSidebarLeft}
           hasSidebarRight={hasSidebarRight}
+          onDragStart={onDragAppStart}
         >
           {renderAppContent(app)}
         </AppWindow>

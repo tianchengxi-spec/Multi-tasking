@@ -20,7 +20,11 @@ const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [zIndexCounter, setZIndexCounter] = useState(10);
-  const [isDockVisible, setIsDockVisible] = useState(true);
+  const [isDockVisible, setIsDockVisible] = useState(false);
+  const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const touchStartY = useRef<number | null>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [splitRatios, setSplitRatios] = useState<[number, number]>([0.5, 0.66]);
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
@@ -307,6 +311,34 @@ const App: React.FC = () => {
   }, [activeAppId]);
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    if (draggingAppId) {
+      const app = apps.find(a => a.id === draggingAppId);
+      if (app && app.state === 'floating') {
+        const x = e.clientX - dragOffset.x;
+        const y = e.clientY - dragOffset.y;
+        
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const dockHeight = 160; 
+        
+        // Window Size
+        const winW = 320;
+        const winH = 550;
+        
+        // Constraints (Safe Area)
+        const minX = 24;
+        const minY = 60;
+        const maxX = screenWidth - winW - 24;
+        const maxY = screenHeight - winH - dockHeight;
+        
+        const safeX = Math.min(Math.max(minX, x), maxX);
+        const safeY = Math.min(Math.max(minY, y), maxY);
+        
+        setApps(prev => prev.map(a => a.id === draggingAppId ? { ...a, position: { x: safeX, y: safeY } } : a));
+      }
+      return;
+    }
+
     if (dragIcon) {
       const x = e.clientX;
       const y = e.clientY;
@@ -341,6 +373,7 @@ const App: React.FC = () => {
   };
 
   const handlePointerUpGlobal = () => {
+    setDraggingAppId(null);
     if (dragIcon) {
       if (dragIcon.isOverDivider) openApp(dragIcon.type, 'split-divider');
       else if (dragIcon.isOverLeftZone) openApp(dragIcon.type, 'split-left');
@@ -373,18 +406,54 @@ const App: React.FC = () => {
           onCloseApp={closeApp}
           onMinimizeApp={(id) => setApps(prev => prev.map(a => a.id === id ? { ...a, state: 'minimized' } : a))}
           onMaximize={() => {}}
-          onFocusApp={(id) => { setZIndexCounter(z => z + 1); setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a)); setActiveAppId(id); }}
+          onFocusApp={(id) => { 
+            setZIndexCounter(z => z + 1); 
+            setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a)); 
+            setActiveAppId(id);
+            setIsDockVisible(false); // Hide dock when focusing wallpaper
+          }}
           onOpenApp={openApp}
           splitRatios={splitRatios}
-        />
-        <Dock 
-          openApps={apps.map(a => a.type)}
-          onOpenApp={openApp}
-          activeAppType={apps.find(a => a.id === activeAppId)?.type || null}
-          isVisible={isDockVisible}
-          onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverFloatingZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false })}
+          onClickWallpaper={() => setIsDockVisible(false)}
+          onDragAppStart={(id, x, y) => {
+            const app = apps.find(a => a.id === id);
+            if (app && app.state === 'floating') {
+              setDraggingAppId(id);
+              setDragOffset({ x: x - app.position.x, y: y - app.position.y });
+              setZIndexCounter(z => z + 1);
+              setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
+              setActiveAppId(id);
+            }
+          }}
         />
       </div>
+
+      <Dock 
+        openApps={apps.map(a => a.type)}
+        onOpenApp={openApp}
+        activeAppType={apps.find(a => a.id === activeAppId)?.type || null}
+        isVisible={isDockVisible}
+        onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverFloatingZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false })}
+        onVisibilityChange={setIsDockVisible}
+      />
+
+      {/* Home Indicator / Trigger Zone */}
+      {!isDockVisible && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-8 z-[90] flex items-center justify-center group cursor-pointer"
+          onMouseEnter={() => setIsDockVisible(true)}
+          onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; }}
+          onTouchEnd={(e) => {
+            if (touchStartY.current !== null) {
+              const deltaY = touchStartY.current - e.changedTouches[0].clientY;
+              if (deltaY > 20) setIsDockVisible(true);
+            }
+            touchStartY.current = null;
+          }}
+        >
+          <div className="w-24 h-1 rounded-full bg-slate-400/20 group-hover:bg-slate-400/50 transition-colors" />
+        </div>
+      )}
 
       {splitApps.length >= 2 && (
         <>

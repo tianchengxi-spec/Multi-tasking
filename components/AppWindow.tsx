@@ -15,6 +15,7 @@ interface AppWindowProps {
   isTripleVertical?: boolean;
   hasSidebarLeft?: boolean;
   hasSidebarRight?: boolean;
+  onDragStart?: (id: string, x: number, y: number) => void;
 }
 
 const AppWindow: React.FC<AppWindowProps> = ({ 
@@ -27,7 +28,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
   splitRatios,
   isTripleVertical = false,
   hasSidebarLeft = false,
-  hasSidebarRight = false
+  hasSidebarRight = false,
+  onDragStart
 }) => {
   const config = APP_CONFIG[app.type];
   
@@ -170,7 +172,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
       className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive ? 'ring-2 ring-blue-500/30' : ''}`}
       onClick={() => onFocus(app.id)}
     >
-      <div className={`h-12 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-default shrink-0`}>
+      <div 
+        className={`h-12 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
+        onPointerDown={(e) => {
+          if (app.state === 'floating' && onDragStart) {
+            onDragStart(app.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <div className={`flex items-center ${isSidebar ? 'flex-col gap-1' : 'gap-3'}`}>
           <div className={`${config.color} p-1 rounded-lg`}>
             {React.cloneElement(config.icon as React.ReactElement<any>, { size: isSidebar ? 24 : 16 })}

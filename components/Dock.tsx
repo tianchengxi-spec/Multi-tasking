@@ -8,6 +8,7 @@ interface DockProps {
   onOpenApp: (type: AppType) => void;
   activeAppType: AppType | null;
   isVisible: boolean;
+  onVisibilityChange?: (visible: boolean) => void;
   onDragStart?: (type: AppType, x: number, y: number) => void;
   onDragMove?: (x: number, y: number) => void;
   onDragEnd?: () => void;
@@ -18,12 +19,43 @@ const Dock: React.FC<DockProps> = ({
   onOpenApp, 
   activeAppType, 
   isVisible,
+  onVisibilityChange,
   onDragStart,
   onDragMove,
   onDragEnd
 }) => {
   const [activePress, setActivePress] = useState<AppType | null>(null);
   const longPressTimer = useRef<any>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const swipeStartY = useRef<number | null>(null);
+
+  const startHideTimer = () => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      onVisibilityChange?.(false);
+    }, 1500); 
+  };
+
+  const stopHideTimer = () => {
+    if (hideTimer.current) {
+      clearTimeout(hideTimer.current);
+      hideTimer.current = null;
+    }
+  };
+
+  const handlePointerDownGlobal = (e: React.PointerEvent) => {
+    swipeStartY.current = e.clientY;
+  };
+
+  const handlePointerMoveGlobal = (e: React.PointerEvent) => {
+    if (swipeStartY.current !== null) {
+      const deltaY = e.clientY - swipeStartY.current;
+      if (deltaY > 40) { // Swipe Down
+        onVisibilityChange?.(false);
+        swipeStartY.current = null;
+      }
+    }
+  };
 
   const allApps = [
     AppType.NOTES,
@@ -67,9 +99,13 @@ const Dock: React.FC<DockProps> = ({
 
   return (
     <div 
-      className={`h-24 shrink-0 flex items-center justify-center pointer-events-none pb-6 transition-all duration-700 ease-[cubic-bezier(0.33,1,0.68,1)] ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-28 opacity-0'
+      className={`absolute bottom-0 left-0 right-0 h-32 flex items-center justify-center pointer-events-none pb-8 transition-all duration-700 ease-[cubic-bezier(0.33,1,0.68,1)] z-[150] ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120%] opacity-0'
       }`}
+      onMouseEnter={stopHideTimer}
+      onMouseLeave={startHideTimer}
+      onPointerDown={handlePointerDownGlobal}
+      onPointerMove={handlePointerMoveGlobal}
     >
       <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[1.75rem] p-3 flex items-end gap-3 pointer-events-auto">
         {allApps.map((type) => {
