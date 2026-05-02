@@ -6,13 +6,12 @@ export enum AppType {
   AI_ASSISTANT = 'Gemini AI',
   CALENDAR = 'Calendar',
   SETTINGS = 'Settings',
-  BILIBILI = '哔哩哔哩',
   XIAOHONGSHU = '小红书',
   CALCULATOR = '计算器',
   ALIPAY = '支付宝'
 }
 
-export type WindowState = 'floating' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized';
+export type WindowState = 'floating' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized' | 'split-sidebar-left' | 'split-sidebar-right';
 
 export interface AppInstance {
   id: string;

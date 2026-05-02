@@ -13,16 +13,6 @@ import {
 } from 'lucide-react';
 import { AppType } from './types';
 
-const BilibiliIcon = ({ size = 24 }: { size?: number }) => (
-  <div className="flex items-center justify-center overflow-hidden bg-[#FB7299]" style={{ width: size, height: size }}>
-    <img 
-      src="https://i0.hdslb.com/bfs/static/jinkela/long/images/512.png" 
-      className="w-full h-full object-cover scale-110"
-      alt="Bilibili"
-    />
-  </div>
-);
-
 const AlipayIcon = ({ size = 24 }: { size?: number }) => (
   <div className="flex items-center justify-center overflow-hidden bg-white" style={{ width: size, height: size }}>
     <svg width="100%" height="100%" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -72,7 +62,6 @@ export const APP_CONFIG = {
   [AppType.AI_ASSISTANT]: { icon: <Sparkles size={24} />, color: 'bg-purple-100 text-purple-600', border: 'border-purple-200' },
   [AppType.CALENDAR]: { icon: <Calendar size={24} />, color: 'bg-rose-100 text-rose-600', border: 'border-rose-200' },
   [AppType.SETTINGS]: { icon: <Settings size={24} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
-  [AppType.BILIBILI]: { icon: <BilibiliIcon />, color: 'bg-[#FB7299]', border: 'border-pink-200' },
   [AppType.XIAOHONGSHU]: { icon: <XiaohongshuIcon />, color: 'bg-[#FF2442]', border: 'border-red-400/10' },
   [AppType.CALCULATOR]: { icon: <CalculatorIcon />, color: 'bg-[#F39C12]', border: 'border-orange-200' },
   [AppType.ALIPAY]: { icon: <AlipayIcon />, color: 'bg-[#009FE8]', border: 'border-blue-200' },

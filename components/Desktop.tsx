@@ -30,6 +30,8 @@ const Desktop: React.FC<DesktopProps> = ({
   splitRatios
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
+  const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
+  const hasSidebarRight = useMemo(() => apps.some(a => a.state === 'split-sidebar-right'), [apps]);
 
   const renderAppContent = (app: AppInstance) => {
     switch (app.type) {
@@ -63,6 +65,8 @@ const Desktop: React.FC<DesktopProps> = ({
           onFocus={onFocusApp}
           splitRatios={splitRatios}
           isTripleVertical={isTripleVertical}
+          hasSidebarLeft={hasSidebarLeft}
+          hasSidebarRight={hasSidebarRight}
         >
           {renderAppContent(app)}
         </AppWindow>

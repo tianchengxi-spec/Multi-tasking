@@ -4,17 +4,17 @@ import { Grid, List, ChevronRight, HardDrive, Cloud, Clock, Star, Trash2 } from 
 
 const FilesApp: React.FC = () => {
   const folders = [
-    { name: 'Documents', items: '124 files', color: 'bg-blue-100 text-blue-600' },
-    { name: 'Thesis Project', items: '45 files', color: 'bg-amber-100 text-amber-600' },
-    { name: 'Downloads', items: '12 files', color: 'bg-emerald-100 text-emerald-600' },
-    { name: 'System Logs', items: '8 files', color: 'bg-slate-100 text-slate-600' },
+    { name: '文档', items: '124 个文件', color: 'bg-blue-100 text-blue-600' },
+    { name: '毕业论文项目', items: '45 个文件', color: 'bg-amber-100 text-amber-600' },
+    { name: '下载', items: '12 个文件', color: 'bg-emerald-100 text-emerald-600' },
+    { name: '系统日志', items: '8 个文件', color: 'bg-slate-100 text-slate-600' },
   ];
 
   const files = [
-    { name: 'Design_Spec_v2.pdf', size: '2.4 MB', type: 'PDF' },
-    { name: 'Prototype_Demo.mp4', size: '124 MB', type: 'Video' },
-    { name: 'Icon_Set_Final.zip', size: '4.1 MB', type: 'Archive' },
-    { name: 'Reference_List.xlsx', size: '890 KB', type: 'Sheet' },
+    { name: '设计规范_v2.pdf', size: '2.4 MB', type: 'PDF' },
+    { name: '原型演示.mp4', size: '124 MB', type: '视频' },
+    { name: '最终图标集.zip', size: '4.1 MB', type: '压缩包' },
+    { name: '参考清单.xlsx', size: '890 KB', type: '表格' },
   ];
 
   return (
@@ -22,23 +22,23 @@ const FilesApp: React.FC = () => {
       {/* Sidebar */}
       <div className="w-56 border-r border-slate-100 bg-slate-50/50 p-4 space-y-6 shrink-0">
         <div>
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Locations</h3>
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">位置</h3>
           <nav className="space-y-1">
             <div className="flex items-center gap-3 px-3 py-2 bg-white text-blue-600 rounded-xl shadow-sm border border-slate-100 font-semibold text-sm cursor-pointer">
-              <HardDrive size={16} /> Nexus Storage
+              <HardDrive size={16} /> Nexus 存储
             </div>
             <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer">
-              <Cloud size={16} /> Nexus Cloud
+              <Cloud size={16} /> Nexus 云盘
             </div>
           </nav>
         </div>
         
         <div>
-          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Favorites</h3>
+          <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">收藏夹</h3>
           <nav className="space-y-1">
-            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Clock size={16} /> Recent</div>
-            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Star size={16} /> Starred</div>
-            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Trash2 size={16} /> Trash</div>
+            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Clock size={16} /> 最近</div>
+            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Star size={16} /> 星标</div>
+            <div className="flex items-center gap-3 px-3 py-2 text-slate-500 hover:bg-slate-100 rounded-xl text-sm transition-colors cursor-pointer"><Trash2 size={16} /> 回收站</div>
           </nav>
         </div>
       </div>
@@ -47,7 +47,7 @@ const FilesApp: React.FC = () => {
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            Nexus Storage <ChevronRight size={14} /> Documents
+            Nexus 存储 <ChevronRight size={14} /> 文档
           </div>
           <div className="flex bg-slate-100 p-1 rounded-lg">
             <button className="p-1.5 bg-white shadow-sm rounded-md text-slate-600"><Grid size={16} /></button>
@@ -56,7 +56,7 @@ const FilesApp: React.FC = () => {
         </div>
 
         <section className="mb-10">
-          <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">Folders</h2>
+          <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">文件夹</h2>
           <div className="grid grid-cols-4 gap-4">
             {folders.map(folder => (
               <div key={folder.name} className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl transition-all cursor-pointer group">
@@ -71,7 +71,7 @@ const FilesApp: React.FC = () => {
         </section>
 
         <section>
-          <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">Recent Files</h2>
+          <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">最近文件</h2>
           <div className="space-y-2">
             {files.map(file => (
               <div key={file.name} className="flex items-center justify-between p-3 border border-transparent hover:border-slate-100 hover:bg-slate-50 rounded-xl transition-all cursor-pointer group">

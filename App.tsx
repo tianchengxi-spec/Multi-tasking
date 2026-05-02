@@ -29,6 +29,26 @@ const App: React.FC = () => {
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
   const hotZoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Handle hot zone timer
+  useEffect(() => {
+    if (dragIcon?.isOverTopRightZone && !dragIcon.isLocked) {
+      if (!hotZoneTimer.current) {
+        hotZoneTimer.current = setTimeout(() => {
+          setDragIcon(prev => prev ? { ...prev, isLocked: true } : null);
+          if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+        }, 700);
+      }
+    } else if (!dragIcon?.isOverTopRightZone) {
+      if (hotZoneTimer.current) {
+        clearTimeout(hotZoneTimer.current);
+        hotZoneTimer.current = null;
+      }
+      if (dragIcon?.isLocked) {
+        setDragIcon(prev => prev ? { ...prev, isLocked: false } : null);
+      }
+    }
+  }, [dragIcon?.isOverTopRightZone, dragIcon?.isLocked]);
+
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
     const preventDefault = (e: TouchEvent) => {
@@ -149,6 +169,40 @@ const App: React.FC = () => {
           }
           setSplitRatios([0.33, 0.66]);
         }
+        else if (isTripleSplit && !isTSplit) {
+          const splitStates: WindowState[] = ['split-left', 'split-middle', 'split-right'];
+          const currentSplitApps = prev.filter(a => splitStates.includes(a.state));
+          
+          const isExistingInSplit = existingApp && currentSplitApps.some(a => a.id === existingApp.id);
+          
+          if (currentSplitApps.length === 3 && !isExistingInSplit) {
+            const oldest = currentSplitApps[0];
+            const others = currentSplitApps.slice(1);
+            
+            // Move the oldest app to sidebar instead of minimizing
+            const sidebarState = forceState === 'split-left' ? 'split-sidebar-right' : 'split-sidebar-left' as WindowState;
+            updatedApps = updatedApps.map(a => 
+              a.id === oldest.id ? { ...a, state: sidebarState } : a
+            );
+            
+            // Shift remaining apps
+            if (forceState === 'split-left') {
+              updatedApps = updatedApps.map(a => {
+                if (a.id === others[0].id) return { ...a, state: 'split-middle' as WindowState };
+                if (a.id === others[1].id) return { ...a, state: 'split-right' as WindowState };
+                return a;
+              });
+            } else if (forceState === 'split-right') {
+              updatedApps = updatedApps.map(a => {
+                if (a.id === others[0].id) return { ...a, state: 'split-left' as WindowState };
+                if (a.id === others[1].id) return { ...a, state: 'split-middle' as WindowState };
+                return a;
+              });
+            }
+            // If we have sidebar + 3 apps, it's 3 apps in the main area.
+            setSplitRatios([0.33, 0.66]);
+          }
+        }
         const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
         const appToAddOrUpdate = {
           id: newId,
@@ -173,8 +227,8 @@ const App: React.FC = () => {
           ...a, 
           state: (forceState as WindowState) || 'maximized', 
           zIndex: newZIndex,
-          size: forceState === 'floating' ? { width: 380, height: 640 } : { width: '100%', height: '100%' },
-          position: forceState === 'floating' ? { x: screenWidth - 420, y: 80 } : { x: 0, y: 0 }
+          size: forceState === 'floating' ? { width: 320, height: 540 } : { width: '100%', height: '100%' },
+          position: forceState === 'floating' ? { x: screenWidth - 328, y: 8 } : { x: 0, y: 0 }
         } : a
       ));
       setActiveAppId(existingApp.id);
@@ -190,8 +244,8 @@ const App: React.FC = () => {
       title: type,
       state: newState,
       zIndex: newZIndex,
-      position: newState === 'floating' ? { x: screenWidth - 420, y: 80 } : { x: 0, y: 0 },
-      size: newState === 'floating' ? { width: 380, height: 640 } : { width: '100%', height: '100%' }
+      position: newState === 'floating' ? { x: screenWidth - 328, y: 8 } : { x: 0, y: 0 },
+      size: newState === 'floating' ? { width: 320, height: 540 } : { width: '100%', height: '100%' }
     };
     setApps(prev => [...prev, newApp]);
     setActiveAppId(newId);
@@ -279,7 +333,7 @@ const App: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
       const screenWidth = window.innerWidth;
-      const isOverTR = hasBackgroundApp && x > screenWidth - 250 && y < 250;
+      const isOverTR = hasBackgroundApp && x > screenWidth - 300 && y < 300;
       const isOverLeft = hasBackgroundApp && x < 120;
       const isOverRight = hasBackgroundApp && x > screenWidth - 120 && !isOverTR;
       const dividerX = splitRatios[0] * screenWidth;
@@ -292,7 +346,8 @@ const App: React.FC = () => {
     }
 
     if (resizingDividerIndex !== null) {
-      const newRatio = e.clientX / window.innerWidth;
+      const workingWidth = window.innerWidth - lOffset - rOffset;
+      const newRatio = (e.clientX - lOffset) / workingWidth;
       setSplitRatios(prev => {
         const next = [...prev] as [number, number];
         next[resizingDividerIndex] = newRatio;
@@ -304,15 +359,25 @@ const App: React.FC = () => {
   };
 
   const handlePointerUpGlobal = () => {
+    if (hotZoneTimer.current) {
+      clearTimeout(hotZoneTimer.current);
+      hotZoneTimer.current = null;
+    }
     if (dragIcon) {
       if (dragIcon.isOverDivider) openApp(dragIcon.type, 'split-divider');
-      else if (dragIcon.isLocked && dragIcon.isOverTopRightZone) openApp(dragIcon.type, 'floating');
+      else if (dragIcon.isOverTopRightZone && dragIcon.isLocked) openApp(dragIcon.type, 'floating');
       else if (dragIcon.isOverLeftZone) openApp(dragIcon.type, 'split-left');
       else if (dragIcon.isOverRightZone) openApp(dragIcon.type, 'split-right');
       setDragIcon(null);
     }
     setResizingDividerIndex(null);
   };
+
+  const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
+  const hasSidebarRight = useMemo(() => apps.some(a => a.state === 'split-sidebar-right'), [apps]);
+  const sidebarWidth = 60;
+  const lOffset = hasSidebarLeft ? sidebarWidth : 0;
+  const rOffset = hasSidebarRight ? sidebarWidth : 0;
 
   return (
     <div 
@@ -347,7 +412,7 @@ const App: React.FC = () => {
         <>
           <div 
             className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-            style={{ left: `${splitRatios[0] * 100}%`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+            style={{ left: `calc(${lOffset}px + ${splitRatios[0]} * (100% - ${lOffset + rOffset}px))`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
             onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
           >
             <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 0 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
@@ -355,7 +420,7 @@ const App: React.FC = () => {
           {isTripleSplit && !isTSplit && !isQuadSplit && (
             <div 
               className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-              style={{ left: `${splitRatios[1] * 100}%`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+              style={{ left: `calc(${lOffset}px + ${splitRatios[1]} * (100% - ${lOffset + rOffset}px))`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
               onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(1); }}
             >
               <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 1 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
@@ -376,6 +441,36 @@ const App: React.FC = () => {
 
       {dragIcon && (
         <div className="absolute inset-0 z-[200] pointer-events-none overflow-hidden">
+          {/* Top Right Hot Zone */}
+          {hasBackgroundApp && (
+            <div 
+              className={`absolute right-0 top-0 w-[300px] h-[300px] transition-all duration-500 rounded-bl-[100%] flex items-center justify-center ${dragIcon.isOverTopRightZone ? 'opacity-100 scale-105' : 'opacity-40 scale-100'}`}
+              style={{ 
+                background: dragIcon.isLocked 
+                  ? 'radial-gradient(circle at top right, rgba(244, 63, 94, 0.4) 0%, rgba(244, 63, 94, 0.1) 50%, transparent 80%)' 
+                  : 'radial-gradient(circle at top right, rgba(244, 63, 94, 0.15) 0%, rgba(244, 63, 94, 0.05) 50%, transparent 80%)',
+                borderLeft: '2px dashed rgba(244, 63, 94, 0.2)',
+                borderBottom: '2px dashed rgba(244, 63, 94, 0.2)'
+              }}
+            >
+              <div className={`absolute top-16 right-16 text-right transition-all duration-300 ${dragIcon.isOverTopRightZone ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-60'}`}>
+                <p className="text-rose-600 font-black text-lg leading-tight">
+                  {dragIcon.isLocked ? '松手开启小窗' : '拖拽至此小窗'}
+                </p>
+                <p className="text-rose-400 text-[10px] font-bold uppercase tracking-widest mt-1">Floating Window</p>
+              </div>
+              
+              {/* Visual Indicator of the window size */}
+              <div 
+                className={`absolute top-2 right-2 border-2 border-rose-400/40 rounded-2xl transition-all duration-500 ${dragIcon.isLocked ? 'w-[320px] h-[540px] opacity-100' : 'w-12 h-12 opacity-0'}`}
+                style={{ 
+                  background: 'rgba(244, 63, 94, 0.08)',
+                  boxShadow: dragIcon.isLocked ? '0 20px 50px rgba(0,0,0,0.1)' : 'none'
+                }}
+              />
+            </div>
+          )}
+
           {dragIcon.isOverDivider && (
             <div className="absolute flex items-center justify-center px-4 py-2 bg-rose-500/90 text-white rounded-full text-xs font-bold shadow-xl animate-bounce" style={{ left: dragIcon.x + 20, top: dragIcon.y - 40 }}>
               {isTSplit ? '拖拽至此四分屏' : '拖拽至此三分屏'}
