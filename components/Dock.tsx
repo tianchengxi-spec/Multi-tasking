@@ -71,7 +71,7 @@ const Dock: React.FC<DockProps> = ({
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-28 opacity-0'
       }`}
     >
-      <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2.5rem] p-3 flex items-end gap-3 pointer-events-auto">
+      <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[1.75rem] p-3 flex items-end gap-3 pointer-events-auto">
         {allApps.map((type) => {
           const config = APP_CONFIG[type];
           const isActive = activeAppType === type;

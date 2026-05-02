@@ -10,11 +10,10 @@ interface DragIconState {
   type: AppType;
   x: number;
   y: number;
-  isOverTopRightZone: boolean;
+  isOverFloatingZone: boolean;
   isOverLeftZone: boolean;
   isOverRightZone: boolean;
   isOverDivider: boolean;
-  isLocked: boolean;
 }
 
 const App: React.FC = () => {
@@ -27,27 +26,6 @@ const App: React.FC = () => {
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
 
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
-  const hotZoneTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Handle hot zone timer
-  useEffect(() => {
-    if (dragIcon?.isOverTopRightZone && !dragIcon.isLocked) {
-      if (!hotZoneTimer.current) {
-        hotZoneTimer.current = setTimeout(() => {
-          setDragIcon(prev => prev ? { ...prev, isLocked: true } : null);
-          if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
-        }, 700);
-      }
-    } else if (!dragIcon?.isOverTopRightZone) {
-      if (hotZoneTimer.current) {
-        clearTimeout(hotZoneTimer.current);
-        hotZoneTimer.current = null;
-      }
-      if (dragIcon?.isLocked) {
-        setDragIcon(prev => prev ? { ...prev, isLocked: false } : null);
-      }
-    }
-  }, [dragIcon?.isOverTopRightZone, dragIcon?.isLocked]);
 
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
@@ -227,8 +205,8 @@ const App: React.FC = () => {
           ...a, 
           state: (forceState as WindowState) || 'maximized', 
           zIndex: newZIndex,
-          size: forceState === 'floating' ? { width: 320, height: 540 } : { width: '100%', height: '100%' },
-          position: forceState === 'floating' ? { x: screenWidth - 328, y: 8 } : { x: 0, y: 0 }
+          size: forceState === 'floating' ? { width: 320, height: 550 } : { width: '100%', height: '100%' },
+          position: forceState === 'floating' ? { x: screenWidth - 320 - 24, y: 60 } : { x: 0, y: 0 }
         } : a
       ));
       setActiveAppId(existingApp.id);
@@ -244,8 +222,8 @@ const App: React.FC = () => {
       title: type,
       state: newState,
       zIndex: newZIndex,
-      position: newState === 'floating' ? { x: screenWidth - 328, y: 8 } : { x: 0, y: 0 },
-      size: newState === 'floating' ? { width: 320, height: 540 } : { width: '100%', height: '100%' }
+      position: newState === 'floating' ? { x: screenWidth - 320 - 24, y: 60 } : { x: 0, y: 0 },
+      size: newState === 'floating' ? { width: 320, height: 550 } : { width: '100%', height: '100%' }
     };
     setApps(prev => [...prev, newApp]);
     setActiveAppId(newId);
@@ -333,16 +311,20 @@ const App: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
       const screenWidth = window.innerWidth;
-      const isOverTR = hasBackgroundApp && x > screenWidth - 300 && y < 300;
+      
       const isOverLeft = hasBackgroundApp && x < 120;
-      const isOverRight = hasBackgroundApp && x > screenWidth - 120 && !isOverTR;
+      const isOverRight = hasBackgroundApp && x > screenWidth - 120;
+      
       const dividerX = splitRatios[0] * screenWidth;
       const isOverDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < window.innerHeight - 100;
+
+      // New Floating Zone Trigger: Top-right/Middle-right area, not edges or divider
+      const isOverFloating = hasBackgroundApp && !isOverLeft && !isOverRight && !isOverDiv && x > screenWidth * 0.6;
 
       if (isOverDiv && !dragIcon.isOverDivider && window.navigator.vibrate) {
         window.navigator.vibrate(20);
       }
-      setDragIcon(prev => prev ? { ...prev, x, y, isOverTopRightZone: isOverTR, isOverLeftZone: isOverLeft, isOverRightZone: isOverRight, isOverDivider: isOverDiv } : null);
+      setDragIcon(prev => prev ? { ...prev, x, y, isOverFloatingZone: isOverFloating, isOverLeftZone: isOverLeft, isOverRightZone: isOverRight, isOverDivider: isOverDiv } : null);
     }
 
     if (resizingDividerIndex !== null) {
@@ -359,15 +341,11 @@ const App: React.FC = () => {
   };
 
   const handlePointerUpGlobal = () => {
-    if (hotZoneTimer.current) {
-      clearTimeout(hotZoneTimer.current);
-      hotZoneTimer.current = null;
-    }
     if (dragIcon) {
       if (dragIcon.isOverDivider) openApp(dragIcon.type, 'split-divider');
-      else if (dragIcon.isOverTopRightZone && dragIcon.isLocked) openApp(dragIcon.type, 'floating');
       else if (dragIcon.isOverLeftZone) openApp(dragIcon.type, 'split-left');
       else if (dragIcon.isOverRightZone) openApp(dragIcon.type, 'split-right');
+      else if (dragIcon.isOverFloatingZone) openApp(dragIcon.type, 'floating');
       setDragIcon(null);
     }
     setResizingDividerIndex(null);
@@ -404,68 +382,77 @@ const App: React.FC = () => {
           onOpenApp={openApp}
           activeAppType={apps.find(a => a.id === activeAppId)?.type || null}
           isVisible={isDockVisible}
-          onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverTopRightZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false, isLocked: false })}
+          onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverFloatingZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false })}
         />
       </div>
 
       {splitApps.length >= 2 && (
         <>
           <div 
-            className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-            style={{ left: `calc(${lOffset}px + ${splitRatios[0]} * (100% - ${lOffset + rOffset}px))`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+            className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto bg-transparent hover:bg-slate-500/5 transition-colors"
+            style={{ 
+              left: `calc(${lOffset}px + ${splitRatios[0]} * (100% - ${lOffset + rOffset}px))`, 
+              width: '16px', 
+              transform: 'translateX(-50%)', 
+              touchAction: 'none' 
+            }}
             onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
           >
-            <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 0 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
+            <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 0 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''}`} />
           </div>
           {isTripleSplit && !isTSplit && !isQuadSplit && (
             <div 
-              className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto"
-              style={{ left: `calc(${lOffset}px + ${splitRatios[1]} * (100% - ${lOffset + rOffset}px))`, width: '20px', transform: 'translateX(-50%)', touchAction: 'none' }}
+              className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto bg-transparent hover:bg-slate-500/5 transition-colors"
+              style={{ 
+                left: `calc(${lOffset}px + ${splitRatios[1]} * (100% - ${lOffset + rOffset}px))`, 
+                width: '16px', 
+                transform: 'translateX(-50%)', 
+                touchAction: 'none' 
+              }}
               onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(1); }}
             >
-              <div className={`w-1.5 h-16 rounded-full bg-slate-800/80 shadow-lg transition-all duration-300 group-hover:scale-y-125 ${resizingDividerIndex === 1 ? 'scale-y-150 w-2.5 bg-slate-900' : ''}`} />
+              <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 1 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''}`} />
             </div>
           )}
           {(isTSplit || isQuadSplit || splitApps.some(a => a.state.startsWith('split-left-'))) && (
             <div 
-                className="absolute left-1/2 -translate-x-1/2 bg-slate-800/20 h-0.5 z-[100]" 
+                className="absolute z-[100] group flex items-center justify-center bg-transparent hover:bg-slate-500/5 transition-colors" 
                 style={{ 
                     top: '50%', 
-                    width: isQuadSplit ? '100%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `${splitRatios[0] * 100}%` : `${(1 - splitRatios[0]) * 100}%`),
-                    left: isQuadSplit ? '50%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `${(splitRatios[0] / 2) * 100}%` : `${(splitRatios[0] + (1 - splitRatios[0]) / 2) * 100}%`)
+                    height: '16px',
+                    width: isQuadSplit ? '100%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `calc(${splitRatios[0]} * (100% - ${lOffset + rOffset}px))` : `calc(${1-splitRatios[0]} * (100% - ${lOffset + rOffset}px))`),
+                    left: isQuadSplit ? '50%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `calc(${lOffset}px + ${splitRatios[0]/2} * (100% - ${lOffset + rOffset}px))` : `calc(${lOffset}px + (${splitRatios[0]} + (1 - splitRatios[0]) / 2) * (100% - ${lOffset + rOffset}px))`),
+                    transform: 'translate(-50%, -50%)',
                 }}
-            />
+            >
+                <div className="w-12 h-1 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:w-24" />
+            </div>
           )}
         </>
       )}
 
       {dragIcon && (
         <div className="absolute inset-0 z-[200] pointer-events-none overflow-hidden">
-          {/* Top Right Hot Zone */}
+          {/* Floating Zone Indicator */}
           {hasBackgroundApp && (
             <div 
-              className={`absolute right-0 top-0 w-[300px] h-[300px] transition-all duration-500 rounded-bl-[100%] flex items-center justify-center ${dragIcon.isOverTopRightZone ? 'opacity-100 scale-105' : 'opacity-40 scale-100'}`}
+              className={`absolute right-4 top-4 bottom-24 w-1/3 transition-all duration-500 rounded-3xl flex flex-col items-center justify-center ${dragIcon.isOverFloatingZone ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
               style={{ 
-                background: dragIcon.isLocked 
-                  ? 'radial-gradient(circle at top right, rgba(244, 63, 94, 0.4) 0%, rgba(244, 63, 94, 0.1) 50%, transparent 80%)' 
-                  : 'radial-gradient(circle at top right, rgba(244, 63, 94, 0.15) 0%, rgba(244, 63, 94, 0.05) 50%, transparent 80%)',
-                borderLeft: '2px dashed rgba(244, 63, 94, 0.2)',
-                borderBottom: '2px dashed rgba(244, 63, 94, 0.2)'
+                background: 'rgba(251, 113, 154, 0.05)',
+                border: '2px dashed rgba(251, 113, 154, 0.2)',
               }}
             >
-              <div className={`absolute top-16 right-16 text-right transition-all duration-300 ${dragIcon.isOverTopRightZone ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-60'}`}>
-                <p className="text-rose-600 font-black text-lg leading-tight">
-                  {dragIcon.isLocked ? '松手开启小窗' : '拖拽至此小窗'}
-                </p>
+              <div className="text-center">
+                <p className="text-rose-600 font-black text-lg leading-tight uppercase tracking-tighter">松手开启小窗</p>
                 <p className="text-rose-400 text-[10px] font-bold uppercase tracking-widest mt-1">Floating Window</p>
               </div>
               
               {/* Visual Indicator of the window size */}
               <div 
-                className={`absolute top-2 right-2 border-2 border-rose-400/40 rounded-2xl transition-all duration-500 ${dragIcon.isLocked ? 'w-[320px] h-[540px] opacity-100' : 'w-12 h-12 opacity-0'}`}
+                className="mt-8 border-2 border-rose-400/30 rounded-3xl w-[120px] h-[200px]"
                 style={{ 
-                  background: 'rgba(244, 63, 94, 0.08)',
-                  boxShadow: dragIcon.isLocked ? '0 20px 50px rgba(0,0,0,0.1)' : 'none'
+                  background: 'rgba(244, 63, 94, 0.05)',
+                  boxShadow: '0 20px 50px rgba(0,0,0,0.1)' 
                 }}
               />
             </div>

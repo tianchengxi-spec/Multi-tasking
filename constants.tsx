@@ -47,9 +47,7 @@ const XiaohongshuIcon = ({ size = 24 }: { size?: number }) => (
 );
 
 const CalculatorIcon = ({ size = 24 }: { size?: number }) => (
-  <div className="flex items-center justify-center bg-slate-100 rounded-xl" style={{ width: size, height: size }}>
-    <Calculator size={size * 0.7} className="text-slate-600" />
-  </div>
+  <Calculator size={size} />
 );
 
 export const APP_CONFIG = {
@@ -60,7 +58,7 @@ export const APP_CONFIG = {
   [AppType.CALENDAR]: { icon: <Calendar size={24} />, color: 'bg-rose-100 text-rose-600', border: 'border-rose-200' },
   [AppType.SETTINGS]: { icon: <Settings size={24} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.XIAOHONGSHU]: { icon: <XiaohongshuIcon />, color: 'bg-[#FF2442]', border: 'border-red-400/10' },
-  [AppType.CALCULATOR]: { icon: <CalculatorIcon />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
+  [AppType.CALCULATOR]: { icon: <Calculator size={30} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.ALIPAY]: { icon: <AlipayIcon />, color: 'bg-[#009FE8]', border: 'border-blue-200' },
 };
 

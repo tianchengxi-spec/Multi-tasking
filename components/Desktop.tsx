@@ -48,12 +48,7 @@ const Desktop: React.FC<DesktopProps> = ({
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
       <DesktopClock />
       <div className="absolute top-40 left-12 grid grid-cols-4 gap-x-12 gap-y-10 z-0">
-        <button onClick={() => onOpenApp(AppType.NOTES)} className="group flex flex-col items-center w-20">
-          <div className="w-16 h-16 flex items-center justify-center drop-shadow-md rounded-2xl bg-[#F5EDA9]">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-          </div>
-          <span className="text-[11px] font-bold text-slate-700 mt-2">备忘录</span>
-        </button>
+
       </div>
       {apps.filter(app => app.state !== 'minimized').map((app) => (
         <AppWindow
