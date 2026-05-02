@@ -1,5 +1,6 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
+import { motion, useDragControls } from 'motion/react';
 import { AppType } from '../types';
 import { APP_CONFIG } from '../constants';
 
@@ -26,36 +27,7 @@ const Dock: React.FC<DockProps> = ({
 }) => {
   const [activePress, setActivePress] = useState<AppType | null>(null);
   const longPressTimer = useRef<any>(null);
-  const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const swipeStartY = useRef<number | null>(null);
-
-  const startHideTimer = () => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    hideTimer.current = setTimeout(() => {
-      onVisibilityChange?.(false);
-    }, 1500); 
-  };
-
-  const stopHideTimer = () => {
-    if (hideTimer.current) {
-      clearTimeout(hideTimer.current);
-      hideTimer.current = null;
-    }
-  };
-
-  const handlePointerDownGlobal = (e: React.PointerEvent) => {
-    swipeStartY.current = e.clientY;
-  };
-
-  const handlePointerMoveGlobal = (e: React.PointerEvent) => {
-    if (swipeStartY.current !== null) {
-      const deltaY = e.clientY - swipeStartY.current;
-      if (deltaY > 40) { // Swipe Down
-        onVisibilityChange?.(false);
-        swipeStartY.current = null;
-      }
-    }
-  };
+  const dragControls = useDragControls();
 
   const allApps = [
     AppType.NOTES,
@@ -98,16 +70,32 @@ const Dock: React.FC<DockProps> = ({
   };
 
   return (
-    <div 
-      className={`absolute bottom-0 left-0 right-0 h-32 flex items-center justify-center pointer-events-none pb-8 transition-all duration-700 ease-[cubic-bezier(0.33,1,0.68,1)] z-[150] ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-[120%] opacity-0'
-      }`}
-      onMouseEnter={stopHideTimer}
-      onMouseLeave={startHideTimer}
-      onPointerDown={handlePointerDownGlobal}
-      onPointerMove={handlePointerMoveGlobal}
+    <motion.div 
+      drag="y"
+      dragConstraints={{ top: 0, bottom: 200 }}
+      dragElastic={0.1}
+      dragMomentum={false}
+      onDragEnd={(_, info) => {
+        if (info.offset.y > 40) {
+          onVisibilityChange?.(false);
+        }
+      }}
+      initial={false}
+      animate={{ 
+        y: isVisible ? 0 : 160,
+        opacity: isVisible ? 1 : 0
+      }}
+      transition={{ 
+        type: "spring",
+        stiffness: 300,
+        damping: 30,
+        mass: 0.8
+      }}
+      className="absolute bottom-0 left-0 right-0 h-32 flex items-center justify-center pointer-events-none pb-8 z-[150]"
     >
-      <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[1.75rem] p-3 flex items-end gap-3 pointer-events-auto">
+      <div 
+        className="bg-white/75 backdrop-blur-3xl border border-white/40 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.15)] rounded-[2rem] p-3 flex items-end gap-3 pointer-events-auto ring-1 ring-black/5"
+      >
         {allApps.map((type) => {
           const config = APP_CONFIG[type];
           const isActive = activeAppType === type;
@@ -150,7 +138,7 @@ const Dock: React.FC<DockProps> = ({
            <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.4s] mx-0.5" />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

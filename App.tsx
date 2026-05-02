@@ -33,11 +33,10 @@ const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [zIndexCounter, setZIndexCounter] = useState(10);
-  const [isDockVisible, setIsDockVisible] = useState(false);
+  const [isDockVisible, setIsDockVisible] = useState(true);
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const touchStartY = useRef<number | null>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const [splitRatios, setSplitRatios] = useState<[number, number]>([0.5, 0.66]);
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
@@ -540,11 +539,10 @@ const App: React.FC = () => {
             setZIndexCounter(z => z + 1); 
             setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a)); 
             setActiveAppId(id);
-            setIsDockVisible(false); // Hide dock when focusing wallpaper
           }}
           onOpenApp={openApp}
           splitRatios={splitRatios}
-          onClickWallpaper={() => setIsDockVisible(false)}
+          onClickWallpaper={() => {}}
           onDragAppStart={(id, x, y) => {
             const app = apps.find(a => a.id === id);
             if (app && app.state === 'floating') {
