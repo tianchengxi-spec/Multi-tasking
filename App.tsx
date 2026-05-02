@@ -440,18 +440,20 @@ const App: React.FC = () => {
       {/* Home Indicator / Trigger Zone */}
       {!isDockVisible && (
         <div 
-          className="absolute bottom-0 left-0 right-0 h-8 z-[90] flex items-center justify-center group cursor-pointer"
+          className="absolute bottom-5 left-1/2 -translate-x-1/2 w-40 h-12 z-[90] flex items-center justify-center group cursor-pointer"
           onMouseEnter={() => setIsDockVisible(true)}
-          onTouchStart={(e) => { touchStartY.current = e.touches[0].clientY; }}
-          onTouchEnd={(e) => {
+          onClick={() => setIsDockVisible(true)}
+          onPointerDown={(e) => { touchStartY.current = e.clientY; }}
+          onPointerUp={(e) => {
             if (touchStartY.current !== null) {
-              const deltaY = touchStartY.current - e.changedTouches[0].clientY;
-              if (deltaY > 20) setIsDockVisible(true);
+              const deltaY = touchStartY.current - e.clientY;
+              if (deltaY > 15) setIsDockVisible(true); // Small upward swipe
             }
             touchStartY.current = null;
           }}
         >
-          <div className="w-24 h-1 rounded-full bg-slate-400/20 group-hover:bg-slate-400/50 transition-colors" />
+          {/* Floating Pill Handle */}
+          <div className="w-[60px] h-[6px] rounded-full bg-slate-400/40 group-hover:bg-slate-500/60 transition-all duration-300 shadow-sm backdrop-blur-md border border-white/20" />
         </div>
       )}
 
