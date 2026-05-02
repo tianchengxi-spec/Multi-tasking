@@ -47,6 +47,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
       case 'split-sidebar-left':
       case 'split-sidebar-right':
         return 'top-0 h-full rounded-none border-x z-40 shadow-none';
+      case 'floating':
+        return 'rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border border-slate-200 bg-white overflow-hidden ring-1 ring-slate-900/5 max-h-[calc(100vh-100px)]';
       default:
         return 'rounded-[2rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border-slate-200/50 bg-white overflow-hidden ring-1 ring-slate-900/5';
     }
