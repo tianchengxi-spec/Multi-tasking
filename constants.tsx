@@ -7,6 +7,7 @@ import {
   Sparkles, 
   Calendar, 
   Settings, 
+  Calculator,
   Wifi, 
   Battery, 
   SignalHigh
@@ -46,12 +47,8 @@ const XiaohongshuIcon = ({ size = 24 }: { size?: number }) => (
 );
 
 const CalculatorIcon = ({ size = 24 }: { size?: number }) => (
-  <div className="flex items-center justify-center overflow-hidden bg-[#F39C12]" style={{ width: size, height: size }}>
-    <img 
-      src="https://is1-ssl.mzstatic.com/image/thumb/Purple122/v4/6d/2f/50/6d2f504e-670d-f53e-329b-839f379207e2/AppIcon-0-0-1x_U007emarketing-0-0-0-7-0-0-sRGB-0-0-0-GLES2_U002c0-512MB-85-220-0-0.png/512x512bb.jpg" 
-      className="w-full h-full object-cover"
-      alt="Calculator"
-    />
+  <div className="flex items-center justify-center bg-slate-100 rounded-xl" style={{ width: size, height: size }}>
+    <Calculator size={size * 0.7} className="text-slate-600" />
   </div>
 );
 
@@ -63,7 +60,7 @@ export const APP_CONFIG = {
   [AppType.CALENDAR]: { icon: <Calendar size={24} />, color: 'bg-rose-100 text-rose-600', border: 'border-rose-200' },
   [AppType.SETTINGS]: { icon: <Settings size={24} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.XIAOHONGSHU]: { icon: <XiaohongshuIcon />, color: 'bg-[#FF2442]', border: 'border-red-400/10' },
-  [AppType.CALCULATOR]: { icon: <CalculatorIcon />, color: 'bg-[#F39C12]', border: 'border-orange-200' },
+  [AppType.CALCULATOR]: { icon: <CalculatorIcon />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.ALIPAY]: { icon: <AlipayIcon />, color: 'bg-[#009FE8]', border: 'border-blue-200' },
 };
 

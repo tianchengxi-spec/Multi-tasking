@@ -31,6 +31,7 @@ const Dock: React.FC<DockProps> = ({
     AppType.FILES,
     AppType.AI_ASSISTANT,
     AppType.CALENDAR,
+    AppType.CALCULATOR,
     AppType.ALIPAY,
     AppType.SETTINGS
   ];
