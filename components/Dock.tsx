@@ -25,6 +25,8 @@ const Dock: React.FC<DockProps> = ({
   onDragEnd
 }) => {
   const [activePress, setActivePress] = useState<AppType | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const pinchStartDist = useRef<number | null>(null);
   const longPressTimer = useRef<any>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const swipeStartY = useRef<number | null>(null);
@@ -99,6 +101,36 @@ const Dock: React.FC<DockProps> = ({
     }
   };
 
+  const getDistance = (t1: React.Touch, t2: React.Touch) => {
+    return Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = getDistance(e.touches[0], e.touches[1]);
+      pinchStartDist.current = dist;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStartDist.current !== null) {
+      const currentDist = getDistance(e.touches[0], e.touches[1]);
+      const diff = pinchStartDist.current - currentDist;
+
+      if (diff > 50) { // Pinch detected (shrinking)
+        setToast("检测到双指捏合，进入组合模式");
+        pinchStartDist.current = null; // Trigger once
+        if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+        
+        setTimeout(() => setToast(null), 3000);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    pinchStartDist.current = null;
+  };
+
   return (
     <div 
       className={`absolute bottom-0 left-0 right-0 h-32 flex items-center justify-center pointer-events-none pb-8 transition-all duration-700 ease-[cubic-bezier(0.33,1,0.68,1)] z-[150] ${
@@ -109,7 +141,18 @@ const Dock: React.FC<DockProps> = ({
       onPointerDown={handlePointerDownGlobal}
       onPointerMove={handlePointerMoveGlobal}
     >
-      <div className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[1.75rem] p-3 flex items-end gap-3 pointer-events-auto">
+      <div 
+        className="bg-white/70 backdrop-blur-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[1.75rem] p-3 flex items-end gap-3 pointer-events-auto relative"
+        style={{ touchAction: 'none' }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {toast && (
+          <div className="absolute -top-16 left-1/2 -translate-x-1/2 px-4 py-2 bg-rose-500 text-white rounded-2xl shadow-lg text-xs font-bold whitespace-nowrap animate-bounce z-50">
+            {toast}
+          </div>
+        )}
         {allApps.map((type) => {
           const config = APP_CONFIG[type];
           const isActive = activeAppType === type;

@@ -1,6 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { X, Minus, Maximize2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { AppInstance, WindowState, AppType } from '../types';
 import { APP_CONFIG } from '../constants';
 
@@ -16,6 +17,7 @@ interface AppWindowProps {
   hasSidebarLeft?: boolean;
   hasSidebarRight?: boolean;
   onDragStart?: (id: string, x: number, y: number) => void;
+  isResizing?: boolean;
 }
 
 const AppWindow: React.FC<AppWindowProps> = ({ 
@@ -29,7 +31,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isTripleVertical = false,
   hasSidebarLeft = false,
   hasSidebarRight = false,
-  onDragStart
+  onDragStart,
+  isResizing = false
 }) => {
   const config = APP_CONFIG[app.type];
   
@@ -58,7 +61,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
       zIndex: app.zIndex,
-      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: isResizing ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
     };
 
     if (app.state === 'floating') {
@@ -103,7 +106,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
         ...baseStyle,
         left: lOffset,
         width: `calc(${splitRatios[0]} * ${workingWidth})`,
-        transition: 'none',
       };
     } else if (app.state === 'split-left-top') {
       return {
@@ -113,7 +115,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
         height: '50%',
         width: `calc(${splitRatios[0]} * ${workingWidth})`,
         borderBottom: '1px solid rgba(0,0,0,0.1)',
-        transition: 'none',
       };
     } else if (app.state === 'split-left-bottom') {
       return {
@@ -122,14 +123,12 @@ const AppWindow: React.FC<AppWindowProps> = ({
         top: '50%',
         height: '50%',
         width: `calc(${splitRatios[0]} * ${workingWidth})`,
-        transition: 'none',
       };
     } else if (app.state === 'split-middle') {
       return {
         ...baseStyle,
         left: `calc(${lOffset}px + ${splitRatios[0]} * ${workingWidth})`,
         width: `calc((${(splitRatios[1] - splitRatios[0])}) * ${workingWidth})`,
-        transition: 'none',
       };
     } else if (app.state === 'split-right') {
       const startRatio = isTripleVertical ? splitRatios[1] : splitRatios[0];
@@ -138,7 +137,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
         right: rOffset,
         left: 'auto',
         width: `calc(${1 - startRatio} * ${workingWidth})`,
-        transition: 'none',
       };
     } else if (app.state === 'split-right-top') {
       return {
@@ -149,7 +147,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
         height: '50%',
         width: `calc(${1 - splitRatios[0]} * ${workingWidth})`,
         borderBottom: '1px solid rgba(0,0,0,0.1)',
-        transition: 'none',
       };
     } else if (app.state === 'split-right-bottom') {
       return {
@@ -159,7 +156,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
         top: '50%',
         height: '50%',
         width: `calc(${1 - splitRatios[0]} * ${workingWidth})`,
-        transition: 'none',
       };
     }
 
@@ -169,7 +165,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
   const isSidebar = app.state === 'split-sidebar-left' || app.state === 'split-sidebar-right';
 
   return (
-    <div 
+    <motion.div 
+      initial={
+        app.state.startsWith('split-left') ? { opacity: 0, x: -20, scale: 0.95 } :
+        app.state.startsWith('split-right') ? { opacity: 0, x: 20, scale: 0.95 } :
+        { opacity: 0, scale: 0.98 }
+      }
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
       style={style}
       className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive ? 'ring-2 ring-blue-500/30' : ''}`}
       onClick={() => onFocus(app.id)}
@@ -204,7 +207,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
            <div className="w-1 h-32 bg-slate-200 rounded-full mb-4" />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 

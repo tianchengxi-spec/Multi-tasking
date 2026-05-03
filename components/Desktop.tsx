@@ -24,6 +24,7 @@ interface DesktopProps {
   splitRatios: [number, number];
   onDragAppStart?: (id: string, x: number, y: number) => void;
   onClickWallpaper?: () => void;
+  isResizing?: boolean;
 }
 
 const Desktop: React.FC<DesktopProps> = ({ 
@@ -35,7 +36,8 @@ const Desktop: React.FC<DesktopProps> = ({
   onOpenApp,
   splitRatios,
   onDragAppStart,
-  onClickWallpaper
+  onClickWallpaper,
+  isResizing = false
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
@@ -86,6 +88,7 @@ const Desktop: React.FC<DesktopProps> = ({
           hasSidebarLeft={hasSidebarLeft}
           hasSidebarRight={hasSidebarRight}
           onDragStart={onDragAppStart}
+          isResizing={isResizing}
         >
           {renderAppContent(app)}
         </AppWindow>

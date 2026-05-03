@@ -49,6 +49,8 @@ const App: React.FC = () => {
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
 
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
+  const [activeTriggerZone, setActiveTriggerZone] = useState<'left' | 'right' | 'floating' | 'divider' | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
@@ -338,7 +340,6 @@ const App: React.FC = () => {
         
         const screenWidth = window.innerWidth;
         const screenHeight = window.innerHeight;
-        const dockHeight = 160; 
         
         // Window Size
         const winW = 320;
@@ -362,20 +363,49 @@ const App: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
       const screenWidth = window.innerWidth;
+      const screenHeight = window.innerHeight;
       
-      const isOverLeft = hasBackgroundApp && x < 80;
-      const isOverRight = hasBackgroundApp && x > screenWidth - 80;
+      // 1. Physical Zoning Logic
+      const leftBoundary = screenWidth * 0.3;
+      const rightBoundary = screenWidth * 0.7;
       
+      // Floating Zone Priority (Top-Right 250x250)
+      const isFloating = hasBackgroundApp && x > screenWidth - 250 && y < 250;
+      
+      // Divider Sensitivity
       const dividerX = splitRatios[0] * screenWidth;
-      const isOverDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < window.innerHeight - 100;
+      const isDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < screenHeight - 100;
 
-      // New Floating Zone Trigger: Top-right corner area (approx 300x400)
-      const isOverFloating = hasBackgroundApp && !isOverLeft && !isOverRight && !isOverDiv && x > screenWidth - 320 && y < 420;
+      // Basic Overlaps
+      const isOverL = !isFloating && !isDiv && hasBackgroundApp && x < leftBoundary;
+      const isOverR = !isFloating && !isDiv && hasBackgroundApp && x > rightBoundary;
 
-      if (isOverDiv && !dragIcon.isOverDivider && window.navigator.vibrate) {
-        window.navigator.vibrate(20);
+      // Determine current hovered zone (Raw)
+      const currentHoveredZone = isFloating ? 'floating' : (isDiv ? 'divider' : (isOverL ? 'left' : (isOverR ? 'right' : null)));
+
+      // 2. Hover Intent Mechanism (350ms delay)
+      if (currentHoveredZone !== activeTriggerZone) {
+        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+        
+        if (currentHoveredZone) {
+          hoverTimerRef.current = setTimeout(() => {
+            setActiveTriggerZone(currentHoveredZone as any);
+            if (currentHoveredZone === 'divider' && window.navigator.vibrate) {
+              window.navigator.vibrate(20);
+            }
+          }, 350);
+        } else {
+          setActiveTriggerZone(null);
+        }
       }
-      setDragIcon(prev => prev ? { ...prev, x, y, isOverFloatingZone: isOverFloating, isOverLeftZone: isOverLeft, isOverRightZone: isOverRight, isOverDivider: isOverDiv } : null);
+
+      setDragIcon(prev => prev ? { 
+        ...prev, x, y, 
+        isOverFloatingZone: isFloating, 
+        isOverLeftZone: isOverL, 
+        isOverRightZone: isOverR, 
+        isOverDivider: isDiv 
+      } : null);
     }
 
     if (resizingDividerIndex !== null) {
@@ -392,13 +422,17 @@ const App: React.FC = () => {
   };
 
   const handlePointerUpGlobal = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     setDraggingAppId(null);
     if (dragIcon) {
-      if (dragIcon.isOverDivider) openApp(dragIcon.type, 'split-divider');
-      else if (dragIcon.isOverLeftZone) openApp(dragIcon.type, 'split-left');
-      else if (dragIcon.isOverRightZone) openApp(dragIcon.type, 'split-right');
-      else if (dragIcon.isOverFloatingZone) openApp(dragIcon.type, 'floating');
+      // 3. Drop to Execute: Only if zone is verified (active)
+      if (activeTriggerZone === 'divider') openApp(dragIcon.type, 'split-divider');
+      else if (activeTriggerZone === 'left') openApp(dragIcon.type, 'split-left');
+      else if (activeTriggerZone === 'right') openApp(dragIcon.type, 'split-right');
+      else if (activeTriggerZone === 'floating') openApp(dragIcon.type, 'floating');
+      
       setDragIcon(null);
+      setActiveTriggerZone(null);
     }
     setResizingDividerIndex(null);
   };
@@ -436,6 +470,7 @@ const App: React.FC = () => {
           onClickWallpaper={() => {
             if (hasOpenApps) setIsDockVisible(false);
           }}
+          isResizing={resizingDividerIndex !== null}
           onDragAppStart={(id, x, y) => {
             const app = apps.find(a => a.id === id);
             if (app && app.state === 'floating') {
@@ -526,7 +561,7 @@ const App: React.FC = () => {
           {/* Floating Zone Indicator (Top-Right 1/4 Circle) */}
           {hasBackgroundApp && (
             <div 
-              className={`absolute right-0 top-0 w-64 h-64 transition-all duration-500 rounded-bl-full flex items-center justify-center ${dragIcon.isOverFloatingZone ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}
+              className={`absolute right-0 top-0 w-64 h-64 transition-all duration-500 rounded-bl-full flex items-center justify-center ${activeTriggerZone === 'floating' ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 translate-x-12 -translate-y-12'}`}
               style={{ 
                 background: 'rgba(251, 113, 154, 0.1)',
                 borderLeft: '2px dashed rgba(251, 113, 154, 0.3)',
@@ -545,18 +580,18 @@ const App: React.FC = () => {
             </div>
           )}
 
-          {dragIcon.isOverDivider && (
+          {activeTriggerZone === 'divider' && (
             <div className="absolute flex items-center justify-center px-4 py-2 bg-rose-500/90 text-white rounded-full text-xs font-bold shadow-xl animate-bounce" style={{ left: dragIcon.x + 20, top: dragIcon.y - 40 }}>
               {isTSplit ? '拖拽至此四分屏' : '拖拽至此三分屏'}
             </div>
           )}
-          {hasBackgroundApp && !dragIcon.isOverDivider && (
+          {hasBackgroundApp && activeTriggerZone !== 'divider' && (
             <>
-              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-r-[100%] ${dragIcon.isOverLeftZone ? 'w-[140px] opacity-100' : 'w-[80px] opacity-60'}`} style={{ background: 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
-                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">向左甩分屏</p>
+              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-r-[100%] ${activeTriggerZone === 'left' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
+                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">吸附至左侧</p>
               </div>
-              <div className={`absolute right-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-l-[100%] ${dragIcon.isOverRightZone ? 'w-[140px] opacity-100' : 'w-[80px] opacity-60'}`} style={{ background: 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
-                <p className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">向右甩分屏</p>
+              <div className={`absolute right-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-l-[100%] ${activeTriggerZone === 'right' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
+                <p className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">吸附至右侧</p>
               </div>
             </>
           )}
