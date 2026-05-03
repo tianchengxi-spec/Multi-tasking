@@ -5,7 +5,7 @@ import { APP_CONFIG } from '../constants';
 
 interface DockProps {
   openApps: AppType[];
-  onOpenApp: (type: AppType) => void;
+  onOpenApp: (type: AppType, forceState?: any) => void;
   activeAppType: AppType | null;
   isVisible: boolean;
   onVisibilityChange?: (visible: boolean) => void;
@@ -27,6 +27,7 @@ const Dock: React.FC<DockProps> = ({
   const [activePress, setActivePress] = useState<AppType | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const pinchStartDist = useRef<number | null>(null);
+  const pinchApps = useRef<AppType[]>([]);
   const longPressTimer = useRef<any>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const swipeStartY = useRef<number | null>(null);
@@ -105,30 +106,59 @@ const Dock: React.FC<DockProps> = ({
     return Math.sqrt(Math.pow(t2.clientX - t1.clientX, 2) + Math.pow(t2.clientY - t1.clientY, 2));
   };
 
+  const getAppAtPoint = (x: number, y: number): AppType | null => {
+    const elements = document.elementsFromPoint(x, y);
+    for (const el of elements) {
+      const type = el.getAttribute('data-app-type');
+      if (type) return type as AppType;
+    }
+    return null;
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 2) {
       const dist = getDistance(e.touches[0], e.touches[1]);
       pinchStartDist.current = dist;
+
+      // Identify apps under fingers
+      const app1 = getAppAtPoint(e.touches[0].clientX, e.touches[0].clientY);
+      const app2 = getAppAtPoint(e.touches[1].clientX, e.touches[1].clientY);
+      
+      if (app1 && app2 && app1 !== app2) {
+        pinchApps.current = [app1, app2];
+      } else {
+        pinchApps.current = [];
+      }
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchStartDist.current !== null) {
+    if (e.touches.length === 2 && pinchStartDist.current !== null && pinchApps.current.length === 2) {
       const currentDist = getDistance(e.touches[0], e.touches[1]);
       const diff = pinchStartDist.current - currentDist;
 
       if (diff > 50) { // Pinch detected (shrinking)
-        setToast("检测到双指捏合，进入组合模式");
-        pinchStartDist.current = null; // Trigger once
-        if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+        const [app1, app2] = pinchApps.current;
+        setToast(`组合：${app1} + ${app2}`);
         
-        setTimeout(() => setToast(null), 3000);
+        // Execute Merge
+        onOpenApp(app1, 'split-left');
+        onOpenApp(app2, 'split-right');
+        
+        // Cleanup & Feedback
+        pinchStartDist.current = null; 
+        pinchApps.current = [];
+        onVisibilityChange?.(false);
+        
+        if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+        setTimeout(() => setToast(null), 2000);
       }
     }
   };
 
   const handleTouchEnd = () => {
     pinchStartDist.current = null;
+    pinchApps.current = [];
   };
 
   return (
@@ -161,6 +191,7 @@ const Dock: React.FC<DockProps> = ({
           return (
             <button
               key={type}
+              data-app-type={type}
               onPointerDown={(e) => handlePointerDown(e, type)}
               onPointerUp={(e) => handlePointerUp(e, type)}
               onPointerLeave={() => {
