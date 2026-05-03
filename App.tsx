@@ -1,6 +1,5 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import SystemBar from './components/SystemBar';
 import Desktop from './components/Desktop';
 import Dock from './components/Dock';
@@ -16,17 +15,6 @@ interface DragIconState {
   isOverLeftZone: boolean;
   isOverRightZone: boolean;
   isOverDivider: boolean;
-  isLeftIntentConfirmed?: boolean;
-  isRightIntentConfirmed?: boolean;
-}
-
-interface SnappingState {
-  type: AppType;
-  startX: number;
-  startY: number;
-  targetX: number;
-  targetY: number;
-  targetState: WindowState | 'split-divider';
 }
 
 const App: React.FC = () => {
@@ -37,89 +25,38 @@ const App: React.FC = () => {
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const touchStartY = useRef<number | null>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Desktop Mode vs Immersive Mode logic
+  const hasOpenApps = apps.filter(a => a.state !== 'minimized').length > 0;
+
+  useEffect(() => {
+    if (!hasOpenApps) {
+      setIsDockVisible(true);
+    } else {
+      // Transitioning to immersive mode: auto-hide
+      setIsDockVisible(false);
+    }
+  }, [hasOpenApps]);
   
   const [splitRatios, setSplitRatios] = useState<[number, number]>([0.5, 0.66]);
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
 
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
-  const [snapping, setSnapping] = useState<SnappingState | null>(null);
-  const intentTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastDragPos = useRef({ x: 0, y: 0 });
-
-  // Handle detection of "hanging" / hovering in place
-  const checkHoverIntent = useCallback((x: number, y: number, screenWidth: number, screenHeight: number) => {
-    if (!dragIcon) return;
-
-    const dist = Math.sqrt(Math.pow(x - lastDragPos.current.x, 2) + Math.pow(y - lastDragPos.current.y, 2));
-    lastDragPos.current = { x, y };
-
-    if (dist < 10) {
-      if (!intentTimer.current) {
-        intentTimer.current = setTimeout(() => {
-          // Identify Zone at hover location
-          const isOverFloating = x > screenWidth - 256 && y < 256;
-          
-          if (isOverFloating) {
-            setDragIcon(prev => prev ? { 
-              ...prev, x, y, 
-              isOverFloatingZone: true, 
-              isLeftIntentConfirmed: false, 
-              isRightIntentConfirmed: false,
-              isOverLeftZone: false,
-              isOverRightZone: false
-            } : null);
-          } else {
-            const isLeft = x < screenWidth / 2;
-            setDragIcon(prev => {
-              if (!prev) return null;
-              if (window.navigator.vibrate) window.navigator.vibrate(30);
-              return {
-                ...prev,
-                isLeftIntentConfirmed: isLeft,
-                isRightIntentConfirmed: !isLeft,
-                isOverLeftZone: isLeft,
-                isOverRightZone: !isLeft,
-                isOverFloatingZone: false
-              };
-            });
-          }
-        }, 500);
-      }
-    } else {
-      // Clear intent if moving significantly
-      if (intentTimer.current) {
-        clearTimeout(intentTimer.current);
-        intentTimer.current = null;
-      }
-      setDragIcon(prev => {
-        if (!prev) return null;
-        return { 
-          ...prev, 
-          x, 
-          y, 
-          isOverFloatingZone: false,
-          isLeftIntentConfirmed: false,
-          isRightIntentConfirmed: false,
-          isOverLeftZone: false,
-          isOverRightZone: false
-        };
-      });
-    }
-  }, [dragIcon]);
 
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
     const preventDefault = (e: TouchEvent) => {
-      if (dragIcon || resizingDividerIndex !== null || snapping) {
+      if (dragIcon || resizingDividerIndex !== null) {
         e.preventDefault();
       }
     };
 
-    if (dragIcon || resizingDividerIndex !== null || snapping) {
+    if (dragIcon || resizingDividerIndex !== null) {
       window.addEventListener('touchmove', preventDefault, { passive: false });
     }
     return () => window.removeEventListener('touchmove', preventDefault);
-  }, [dragIcon, resizingDividerIndex, snapping]);
+  }, [dragIcon, resizingDividerIndex]);
 
   const splitApps = useMemo(() => 
     apps.filter(a => a.state.startsWith('split-')),
@@ -419,35 +356,20 @@ const App: React.FC = () => {
       const x = e.clientX;
       const y = e.clientY;
       const screenWidth = window.innerWidth;
-      const screenHeight = window.innerHeight;
+      
+      const isOverLeft = hasBackgroundApp && x < 80;
+      const isOverRight = hasBackgroundApp && x > screenWidth - 80;
       
       const dividerX = splitRatios[0] * screenWidth;
       const isOverDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < window.innerHeight - 100;
 
+      // New Floating Zone Trigger: Top-right corner area (approx 300x400)
+      const isOverFloating = hasBackgroundApp && !isOverLeft && !isOverRight && !isOverDiv && x > screenWidth - 320 && y < 420;
+
       if (isOverDiv && !dragIcon.isOverDivider && window.navigator.vibrate) {
         window.navigator.vibrate(20);
       }
-
-      // If over divider, we handle it immediately as it's a specific drop target
-      if (isOverDiv) {
-        if (intentTimer.current) {
-          clearTimeout(intentTimer.current);
-          intentTimer.current = null;
-        }
-        setDragIcon(prev => prev ? { 
-          ...prev, 
-          x, y, 
-          isOverDivider: true, 
-          isOverFloatingZone: false,
-          isLeftIntentConfirmed: false,
-          isRightIntentConfirmed: false,
-          isOverLeftZone: false,
-          isOverRightZone: false
-        } : null);
-      } else {
-        // Use the smart hover intent detection for everything else
-        checkHoverIntent(x, y, screenWidth, screenHeight);
-      }
+      setDragIcon(prev => prev ? { ...prev, x, y, isOverFloatingZone: isOverFloating, isOverLeftZone: isOverLeft, isOverRightZone: isOverRight, isOverDivider: isOverDiv } : null);
     }
 
     if (resizingDividerIndex !== null) {
@@ -465,50 +387,12 @@ const App: React.FC = () => {
 
   const handlePointerUpGlobal = () => {
     setDraggingAppId(null);
-    if (intentTimer.current) {
-      clearTimeout(intentTimer.current);
-      intentTimer.current = null;
-    }
-
     if (dragIcon) {
-      const { type, x, y, isLeftIntentConfirmed, isRightIntentConfirmed, isOverFloatingZone, isOverDivider } = dragIcon;
-      
-      if (isOverDivider) {
-        openApp(type, 'split-divider');
-        setDragIcon(null);
-      } else if (isLeftIntentConfirmed) {
-        setSnapping({
-          type,
-          startX: x,
-          startY: y,
-          targetX: 0,
-          targetY: window.innerHeight / 2,
-          targetState: 'split-left'
-        });
-        setDragIcon(null);
-      } else if (isRightIntentConfirmed) {
-        setSnapping({
-          type,
-          startX: x,
-          startY: y,
-          targetX: window.innerWidth,
-          targetY: window.innerHeight / 2,
-          targetState: 'split-right'
-        });
-        setDragIcon(null);
-      } else if (isOverFloatingZone) {
-        setSnapping({
-          type,
-          startX: x,
-          startY: y,
-          targetX: window.innerWidth - 180 - 16, // Near the center of the 360-wide floating window target x-center
-          targetY: 300, // Roughly where the floating window top-half center would be
-          targetState: 'floating'
-        });
-        setDragIcon(null);
-      } else {
-        setDragIcon(null);
-      }
+      if (dragIcon.isOverDivider) openApp(dragIcon.type, 'split-divider');
+      else if (dragIcon.isOverLeftZone) openApp(dragIcon.type, 'split-left');
+      else if (dragIcon.isOverRightZone) openApp(dragIcon.type, 'split-right');
+      else if (dragIcon.isOverFloatingZone) openApp(dragIcon.type, 'floating');
+      setDragIcon(null);
     }
     setResizingDividerIndex(null);
   };
@@ -539,10 +423,13 @@ const App: React.FC = () => {
             setZIndexCounter(z => z + 1); 
             setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a)); 
             setActiveAppId(id);
+            if (hasOpenApps) setIsDockVisible(false); 
           }}
           onOpenApp={openApp}
           splitRatios={splitRatios}
-          onClickWallpaper={() => {}}
+          onClickWallpaper={() => {
+            if (hasOpenApps) setIsDockVisible(false);
+          }}
           onDragAppStart={(id, x, y) => {
             const app = apps.find(a => a.id === id);
             if (app && app.state === 'floating') {
@@ -566,7 +453,7 @@ const App: React.FC = () => {
       />
 
       {/* Home Indicator / Trigger Zone (Invisible) */}
-      {!isDockVisible && (
+      {!isDockVisible && hasOpenApps && (
         <div 
           className="absolute bottom-5 left-1/2 -translate-x-1/2 w-40 h-12 z-[90] flex items-center justify-center group cursor-pointer"
           onMouseEnter={() => setIsDockVisible(true)}
@@ -659,32 +546,14 @@ const App: React.FC = () => {
           )}
           {hasBackgroundApp && !dragIcon.isOverDivider && (
             <>
-              <div 
-                className={`absolute left-0 top-1/2 -translate-y-1/2 h-4/5 transition-all duration-500 rounded-r-[100%] flex flex-col items-center justify-center ${dragIcon.isOverLeftZone ? 'w-[160px]' : 'w-0'}`} 
-                style={{ 
-                  background: dragIcon.isLeftIntentConfirmed ? 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.4) 0%, transparent 80%)' : 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.1) 0%, transparent 80%)',
-                  borderRight: dragIcon.isLeftIntentConfirmed ? '3px dashed rgba(251, 113, 154, 0.4)' : 'none'
-                }}
-              >
-                <div className={`transition-all duration-300 transform ${dragIcon.isLeftIntentConfirmed ? 'opacity-100 scale-100' : 'opacity-0 scale-90 translate-x-4'}`}>
-                  <p className="text-rose-600 font-black text-lg vertical-text">吸附至左侧分屏</p>
-                </div>
+              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-r-[100%] ${dragIcon.isOverLeftZone ? 'w-[140px] opacity-100' : 'w-[80px] opacity-60'}`} style={{ background: 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
+                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">向左甩分屏</p>
               </div>
-
-              <div 
-                className={`absolute right-0 top-1/2 -translate-y-1/2 h-4/5 transition-all duration-500 rounded-l-[100%] flex flex-col items-center justify-center ${dragIcon.isOverRightZone ? 'w-[160px]' : 'w-0'}`} 
-                style={{ 
-                  background: dragIcon.isRightIntentConfirmed ? 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.4) 0%, transparent 80%)' : 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.1) 0%, transparent 80%)',
-                  borderLeft: dragIcon.isRightIntentConfirmed ? '3px dashed rgba(251, 113, 154, 0.4)' : 'none'
-                }}
-              >
-                <div className={`transition-all duration-300 transform ${dragIcon.isRightIntentConfirmed ? 'opacity-100 scale-100' : 'opacity-0 scale-90 -translate-x-4'}`}>
-                  <p className="text-rose-600 font-black text-lg vertical-text">吸附至右侧分屏</p>
-                </div>
+              <div className={`absolute right-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-l-[100%] ${dragIcon.isOverRightZone ? 'w-[140px] opacity-100' : 'w-[80px] opacity-60'}`} style={{ background: 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
+                <p className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">向右甩分屏</p>
               </div>
             </>
           )}
-
           <div className="absolute pointer-events-none transition-transform duration-75" style={{ left: dragIcon.x, top: dragIcon.y, transform: 'translate(-50%, -50%) scale(1.1)', zIndex: 9999 }}>
              <div className={`${APP_CONFIG[dragIcon.type].color} w-14 h-14 rounded-2xl shadow-2xl border flex items-center justify-center overflow-hidden`}>
                 {APP_CONFIG[dragIcon.type].icon}
@@ -692,27 +561,6 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-
-      <AnimatePresence>
-        {snapping && (
-          <motion.div
-            initial={{ left: snapping.startX, top: snapping.startY, scale: 1.1, opacity: 1 }}
-            animate={{ left: snapping.targetX, top: snapping.targetY, scale: 0.8, opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            onAnimationComplete={() => {
-              openApp(snapping.type, snapping.targetState as WindowState | 'split-divider');
-              setSnapping(null);
-            }}
-            className="absolute pointer-events-none z-[300]"
-            style={{ transform: 'translate(-50%, -50%)' }}
-          >
-             <div className={`${APP_CONFIG[snapping.type].color} w-14 h-14 rounded-2xl shadow-2xl border flex items-center justify-center overflow-hidden`}>
-                {APP_CONFIG[snapping.type].icon}
-             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>
     </div>
   );

@@ -6,6 +6,8 @@ import GeminiApp from './apps/GeminiApp';
 import NotesApp from './apps/NotesApp';
 import BrowserApp from './apps/BrowserApp';
 import FilesApp from './apps/FilesApp';
+import CalendarApp from './apps/CalendarApp';
+import CalculatorApp from './apps/CalculatorApp';
 import DesktopClock from './DesktopClock';
 import { APP_CONFIG } from '../constants';
 
@@ -43,6 +45,8 @@ const Desktop: React.FC<DesktopProps> = ({
       case AppType.BROWSER: return <BrowserApp />;
       case AppType.AI_ASSISTANT: return <GeminiApp apps={apps} />;
       case AppType.FILES: return <FilesApp />;
+      case AppType.CALENDAR: return <CalendarApp />;
+      case AppType.CALCULATOR: return <CalculatorApp />;
       default: return <div className="p-8 text-slate-400 italic text-sm">此应用目前正处于原型开发阶段。</div>;
     }
   };
