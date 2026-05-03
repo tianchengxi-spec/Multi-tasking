@@ -52,6 +52,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
         return 'top-0 h-full rounded-none border-x z-40 shadow-none';
       case 'floating':
         return 'rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] border border-slate-200 bg-white overflow-hidden ring-1 ring-slate-900/5 max-h-[calc(100vh-100px)]';
+      case 'floating-icon':
+        return 'rounded-2xl shadow-xl border border-slate-200 overflow-hidden cursor-pointer hover:scale-110 active:scale-95 transition-transform duration-200';
       default:
         return 'rounded-[2rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] border-slate-200/50 bg-white overflow-hidden ring-1 ring-slate-900/5';
     }
@@ -60,17 +62,20 @@ const AppWindow: React.FC<AppWindowProps> = ({
   const style: React.CSSProperties = useMemo(() => {
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
-      zIndex: app.zIndex,
+      zIndex: app.state === 'floating-icon' ? 2000 + app.zIndex : app.zIndex,
       transition: isResizing ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
     };
 
-    if (app.state === 'floating') {
+    if (app.state === 'floating' || app.state === 'floating-icon') {
       return {
         ...baseStyle,
-        left: app.position.x,
-        top: app.position.y,
-        width: app.size.width,
-        height: app.size.height,
+        left: app.state === 'floating-icon' ? window.innerWidth - 80 : app.position.x,
+        top: app.state === 'floating-icon' ? 40 : app.position.y,
+        width: app.state === 'floating-icon' ? 56 : app.size.width,
+        height: app.state === 'floating-icon' ? 56 : app.size.height,
+        background: app.state === 'floating-icon' ? 'transparent' : undefined,
+        border: app.state === 'floating-icon' ? 'none' : undefined,
+        boxShadow: app.state === 'floating-icon' ? 'none' : undefined,
       };
     } 
     
@@ -163,6 +168,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
   }, [app.state, app.zIndex, app.position, app.size, splitRatios, isTripleVertical, hasSidebarLeft, hasSidebarRight]);
 
   const isSidebar = app.state === 'split-sidebar-left' || app.state === 'split-sidebar-right';
+  const isIconOnly = app.state === 'floating-icon';
 
   return (
     <motion.div 
@@ -174,38 +180,48 @@ const AppWindow: React.FC<AppWindowProps> = ({
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
       style={style}
-      className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive ? 'ring-2 ring-blue-500/30' : ''}`}
+      className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive && !isIconOnly ? 'ring-2 ring-blue-500/30' : ''}`}
       onClick={() => onFocus(app.id)}
     >
-      <div 
-        className={`h-12 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
-        onPointerDown={(e) => {
-          if (app.state === 'floating' && onDragStart) {
-            onDragStart(app.id, e.clientX, e.clientY);
-          }
-        }}
-      >
-        <div className={`flex items-center ${isSidebar ? 'flex-col gap-1' : 'gap-3'}`}>
-          <div className={`${config.color} p-1 rounded-lg`}>
-            {React.cloneElement(config.icon as React.ReactElement<any>, { size: isSidebar ? 24 : 16 })}
-          </div>
-          {!isSidebar && <span className="font-semibold text-slate-700 text-sm truncate max-w-[120px]">{app.title}</span>}
+      {isIconOnly ? (
+        <div className="w-full h-full flex items-center justify-center p-2">
+           <div className={`${config.color} w-full h-full rounded-xl shadow-lg flex items-center justify-center text-white`}>
+              {React.cloneElement(config.icon as React.ReactElement<any>, { size: 28 })}
+           </div>
         </div>
-        {!isSidebar && (
-          <div className="flex items-center gap-1">
-            <button onClick={(e) => { e.stopPropagation(); onClose(app.id); }} className="p-1.5 hover:bg-rose-100 rounded-md transition-colors text-slate-400 hover:text-rose-600">
-              <X size={16} />
-            </button>
+      ) : (
+        <>
+          <div 
+            className={`h-12 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
+            onPointerDown={(e) => {
+              if (app.state === 'floating' && onDragStart) {
+                onDragStart(app.id, e.clientX, e.clientY);
+              }
+            }}
+          >
+            <div className={`flex items-center ${isSidebar ? 'flex-col gap-1' : 'gap-3'}`}>
+              <div className={`${config.color} p-1 rounded-lg`}>
+                {React.cloneElement(config.icon as React.ReactElement<any>, { size: isSidebar ? 24 : 16 })}
+              </div>
+              {!isSidebar && <span className="font-semibold text-slate-700 text-sm truncate max-w-[120px]">{app.title}</span>}
+            </div>
+            {!isSidebar && (
+              <div className="flex items-center gap-1">
+                <button onClick={(e) => { e.stopPropagation(); onClose(app.id); }} className="p-1.5 hover:bg-rose-100 rounded-md transition-colors text-slate-400 hover:text-rose-600">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div className={`flex-1 overflow-auto bg-white ${isSidebar ? 'hidden' : ''}`}>
-        {children}
-      </div>
-      {isSidebar && (
-        <div className="flex-1 flex flex-col items-center py-4 bg-slate-50/30">
-           <div className="w-1 h-32 bg-slate-200 rounded-full mb-4" />
-        </div>
+          <div className={`flex-1 overflow-auto bg-white ${isSidebar ? 'hidden' : ''}`}>
+            {children}
+          </div>
+          {isSidebar && (
+            <div className="flex-1 flex flex-col items-center py-4 bg-slate-50/30">
+               <div className="w-1 h-32 bg-slate-200 rounded-full mb-4" />
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   );

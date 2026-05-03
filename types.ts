@@ -11,7 +11,7 @@ export enum AppType {
   ALIPAY = '支付宝'
 }
 
-export type WindowState = 'floating' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized' | 'split-sidebar-left' | 'split-sidebar-right';
+export type WindowState = 'floating' | 'floating-icon' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized' | 'split-sidebar-left' | 'split-sidebar-right';
 
 export interface AppInstance {
   id: string;

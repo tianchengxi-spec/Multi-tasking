@@ -87,6 +87,16 @@ const App: React.FC = () => {
   const isTripleSplit = useMemo(() => splitApps.length === 3, [splitApps]);
   const isQuadSplit = useMemo(() => splitApps.length === 4, [splitApps]);
 
+  const isFourGridFull = useMemo(() => {
+    const quadTileStates: WindowState[] = ['split-left-top', 'split-left-bottom', 'split-right-top', 'split-right-bottom'];
+    const quadApps = apps.filter(a => quadTileStates.includes(a.state));
+    return quadApps.length === 4;
+  }, [apps]);
+
+  useEffect(() => {
+    console.log('四宫格形态已满：', isFourGridFull);
+  }, [isFourGridFull]);
+
   const hasBackgroundApp = useMemo(() => 
     apps.some(a => a.state === 'maximized' || a.state.startsWith('split-')),
     [apps]
@@ -97,11 +107,100 @@ const App: React.FC = () => {
     const newZIndex = zIndexCounter + 1;
     const screenWidth = window.innerWidth;
 
+    // Quad-tile Detection & Replacement Logic
+    const quadTileStates: WindowState[] = ['split-left-top', 'split-left-bottom', 'split-right-top', 'split-right-bottom'];
+    const quadAppsInField = apps.filter(a => quadTileStates.includes(a.state));
+    
+    // Trigger replacement if in quad-tile and opening a 5th app (or moving one into the tile area)
+    if (quadAppsInField.length === 4 && !forceState && (!existingApp || !quadTileStates.includes(existingApp.state))) {
+      const victim = [...quadAppsInField].sort((a, b) => a.zIndex - b.zIndex)[0];
+      const targetState = victim.state;
+      
+      setApps(prev => {
+        let updated = prev.map(a => {
+          if (a.id === victim.id) {
+            return { 
+              ...a, 
+              state: 'floating-icon' as WindowState,
+              zIndex: newZIndex - 1,
+              position: { x: window.innerWidth - 280 - 40, y: 40 },
+              size: { width: 280, height: 480 }
+            };
+          }
+          return a;
+        });
+
+        const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
+        const newAppInstance: AppInstance = {
+          id: newId,
+          type,
+          title: type,
+          state: targetState,
+          zIndex: newZIndex,
+          position: { x: 0, y: 0 },
+          size: { width: '50%', height: '50%' }
+        };
+
+        if (existingApp) {
+          return updated.map(a => a.id === existingApp.id ? newAppInstance : a);
+        }
+        return [...updated, newAppInstance];
+      });
+
+      setActiveAppId(existingApp?.id || 'new-app-temp-id');
+      setZIndexCounter(newZIndex + 1);
+      return;
+    }
+
     if (forceState === 'split-divider') {
       const leftApp = apps.find(a => a.state === 'split-left');
       const rightApp = apps.find(a => a.state === 'split-right');
       const rightT = apps.find(a => a.state === 'split-right-top');
       const rightB = apps.find(a => a.state === 'split-right-bottom');
+
+      // Quad-tile Replacement Logic if dropping on divider
+      const quadTileStates: WindowState[] = ['split-left-top', 'split-left-bottom', 'split-right-top', 'split-right-bottom'];
+      const quadAppsInField = apps.filter(a => quadTileStates.includes(a.state));
+
+      if (quadAppsInField.length === 4) {
+        const victim = [...quadAppsInField].sort((a, b) => a.zIndex - b.zIndex)[0];
+        const targetState = victim.state;
+        
+        setApps(prev => {
+          let updated = prev.map(a => {
+            if (a.id === victim.id) {
+              return { 
+                ...a, 
+                state: 'floating-icon' as WindowState,
+                zIndex: newZIndex - 1,
+                position: { x: window.innerWidth - 280 - 40, y: 40 },
+                size: { width: 280, height: 480 }
+              };
+            }
+            return a;
+          });
+
+          const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
+          const newAppInstance: AppInstance = {
+            id: newId,
+            type,
+            title: APP_CONFIG[type].title,
+            state: targetState,
+            zIndex: newZIndex,
+            position: { x: 0, y: 0 },
+            size: { width: '50%', height: '50%' }
+          };
+
+          if (existingApp) {
+            return updated.map(a => a.id === existingApp.id ? newAppInstance : a);
+          }
+          return [...updated, newAppInstance];
+        });
+
+        setActiveAppId(existingApp?.id || 'new-app-temp-id');
+        setZIndexCounter(newZIndex + 1);
+        return;
+      }
 
       if (leftApp && rightApp) {
         setApps(prev => {
@@ -374,7 +473,7 @@ const App: React.FC = () => {
       
       // Divider Sensitivity
       const dividerX = splitRatios[0] * screenWidth;
-      const isDiv = (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < screenHeight - 100;
+      const isDiv = (isDualSplit || isTSplit || isFourGridFull) && Math.abs(x - dividerX) < 40 && y > 100 && y < screenHeight - 100;
 
       // Basic Overlaps
       const isOverL = !isFloating && !isDiv && hasBackgroundApp && x < leftBoundary;
@@ -461,7 +560,13 @@ const App: React.FC = () => {
           onMaximize={() => {}}
           onFocusApp={(id) => { 
             setZIndexCounter(z => z + 1); 
-            setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a)); 
+            setApps(prev => prev.map(a => {
+              if (a.id === id) {
+                const newState = a.state === 'floating-icon' ? 'floating' : a.state;
+                return { ...a, state: newState as WindowState, zIndex: zIndexCounter + 1 };
+              }
+              return a;
+            })); 
             setActiveAppId(id);
             if (hasOpenApps) setIsDockVisible(false); 
           }}
@@ -513,18 +618,18 @@ const App: React.FC = () => {
 
       {splitApps.length >= 2 && (
         <>
-          <div 
-            className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto bg-transparent hover:bg-slate-500/5 transition-colors"
-            style={{ 
-              left: `calc(${lOffset}px + ${splitRatios[0]} * (100% - ${lOffset + rOffset}px))`, 
-              width: '16px', 
-              transform: 'translateX(-50%)', 
-              touchAction: 'none' 
-            }}
-            onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
-          >
-            <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 0 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''}`} />
-          </div>
+            <div 
+              className={`absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto bg-transparent hover:bg-slate-500/5 transition-colors ${activeTriggerZone === 'divider' ? 'bg-rose-500/10 border-x border-rose-500/20' : ''}`}
+              style={{ 
+                left: `calc(${lOffset}px + ${splitRatios[0]} * (100% - ${lOffset + rOffset}px))`, 
+                width: '16px', 
+                transform: 'translateX(-50%)', 
+                touchAction: 'none' 
+              }}
+              onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
+            >
+              <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 0 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''} ${activeTriggerZone === 'divider' ? 'bg-rose-500 h-40 w-1.5 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : ''}`} />
+            </div>
           {isTripleSplit && !isTSplit && !isQuadSplit && (
             <div 
               className="absolute top-0 bottom-0 z-[100] group cursor-col-resize flex items-center justify-center pointer-events-auto bg-transparent hover:bg-slate-500/5 transition-colors"
@@ -581,8 +686,8 @@ const App: React.FC = () => {
           )}
 
           {activeTriggerZone === 'divider' && (
-            <div className="absolute flex items-center justify-center px-4 py-2 bg-rose-500/90 text-white rounded-full text-xs font-bold shadow-xl animate-bounce" style={{ left: dragIcon.x + 20, top: dragIcon.y - 40 }}>
-              {isTSplit ? '拖拽至此四分屏' : '拖拽至此三分屏'}
+            <div className="absolute flex items-center justify-center px-4 py-2 bg-rose-500 text-white rounded-full text-xs font-bold shadow-2xl animate-bounce whitespace-nowrap z-[210] border border-white/20" style={{ left: dragIcon.x + 20, top: dragIcon.y - 60 }}>
+              {isFourGridFull ? '替换新任务' : (isTSplit ? '释放以开启四分屏' : '释放以开启三分屏')}
             </div>
           )}
           {hasBackgroundApp && activeTriggerZone !== 'divider' && (
