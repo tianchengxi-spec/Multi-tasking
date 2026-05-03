@@ -8,6 +8,8 @@ import BrowserApp from './apps/BrowserApp';
 import FilesApp from './apps/FilesApp';
 import CalendarApp from './apps/CalendarApp';
 import CalculatorApp from './apps/CalculatorApp';
+import ScheduleWidget from './ScheduleWidget';
+import DeadlineWidget from './DeadlineWidget';
 import DesktopClock from './DesktopClock';
 import { APP_CONFIG } from '../constants';
 
@@ -62,7 +64,13 @@ const Desktop: React.FC<DesktopProps> = ({
     >
       <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
       <DesktopClock />
-      <div className="absolute top-40 left-12 grid grid-cols-4 gap-x-12 gap-y-10 z-0">
+      
+      <div className="absolute top-40 left-12 grid grid-cols-1 gap-6 w-[440px] z-0">
+        <ScheduleWidget />
+        <DeadlineWidget />
+      </div>
+
+      <div className="absolute top-72 left-12 grid grid-cols-4 gap-x-12 gap-y-10 z-0">
 
       </div>
       {apps.filter(app => app.state !== 'minimized').map((app) => (

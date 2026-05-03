@@ -31,14 +31,20 @@ const App: React.FC = () => {
   const hasOpenApps = apps.filter(a => a.state !== 'minimized').length > 0;
 
   useEffect(() => {
-    if (!hasOpenApps) {
+    // If no apps exist at all, we are in pure desktop mode -> Force dock visible
+    if (apps.length === 0) {
       setIsDockVisible(true);
-    } else {
-      // Transitioning to immersive mode: auto-hide
-      setIsDockVisible(false);
+    }
+  }, [apps.length]);
+
+  useEffect(() => {
+    // When transitioning into immersive mode (first app opened), hide dock
+    if (hasOpenApps) {
+      // Logic could be added here if we wanted to auto-hide on every task switch, 
+      // but keeping it simple as per user request to prioritize manual control in apps.
     }
   }, [hasOpenApps]);
-  
+
   const [splitRatios, setSplitRatios] = useState<[number, number]>([0.5, 0.66]);
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
 
@@ -453,7 +459,7 @@ const App: React.FC = () => {
       />
 
       {/* Home Indicator / Trigger Zone (Invisible) */}
-      {!isDockVisible && hasOpenApps && (
+      {!isDockVisible && (
         <div 
           className="absolute bottom-5 left-1/2 -translate-x-1/2 w-40 h-12 z-[90] flex items-center justify-center group cursor-pointer"
           onMouseEnter={() => setIsDockVisible(true)}
