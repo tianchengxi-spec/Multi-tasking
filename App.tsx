@@ -359,72 +359,72 @@ const App: React.FC = () => {
       const closingApp = prev.find(a => a.id === id);
       if (!closingApp) return prev;
 
-      const filteredApps = prev.filter(a => a.id !== id);
-      const splitBefore = prev.filter(a => a.state.startsWith('split-'));
-      
+      let filteredApps = prev.filter(a => a.id !== id);
+      const splitAfter = filteredApps.filter(a => a.state.startsWith('split-') && a.state !== 'split-sidebar-left' && a.state !== 'split-sidebar-right');
+      const sidebarsAfter = filteredApps.filter(a => a.state === 'split-sidebar-left' || a.state === 'split-sidebar-right');
+      const floatingIcons = filteredApps.filter(a => a.state === 'floating-icon');
+
+      // 1. If we have a floating icon and closed a split window, restore the icon first
+      if (closingApp.state.startsWith('split-') && floatingIcons.length > 0) {
+        const iconToRestore = floatingIcons[0];
+        return filteredApps.map(a => 
+          a.id === iconToRestore.id 
+            ? { ...a, state: closingApp.state as WindowState } 
+            : a
+        );
+      }
+
+      // 2. If we have a sidebar app and a main split closed, promote the sidebar
+      if (closingApp.state.startsWith('split-') && !closingApp.state.includes('sidebar') && sidebarsAfter.length > 0) {
+        const sidebarToPromote = sidebarsAfter[0];
+        return filteredApps.map(a => 
+          a.id === sidebarToPromote.id 
+            ? { ...a, state: closingApp.state as WindowState } 
+            : a
+        );
+      }
+
+      // 3. Normal Layout Reflow Hierarchy
       if (closingApp.state.startsWith('split-')) {
-        const remainingSplits = filteredApps.filter(a => a.state.startsWith('split-'));
-        
-        if (splitBefore.length === 4) {
+        const count = splitAfter.length;
+
+        if (count === 3) {
+          // Reflow to 3 equal columns
+          const states: WindowState[] = ['split-left', 'split-middle', 'split-right'];
+          setSplitRatios([0.33, 0.66]);
+          let i = 0;
           return filteredApps.map(a => {
-            if (closingApp.state === 'split-left-top' && a.state === 'split-left-bottom') return { ...a, state: 'split-left' as WindowState };
-            if (closingApp.state === 'split-left-bottom' && a.state === 'split-left-top') return { ...a, state: 'split-left' as WindowState };
-            if (closingApp.state === 'split-right-top' && a.state === 'split-right-bottom') return { ...a, state: 'split-right' as WindowState };
-            if (closingApp.state === 'split-right-bottom' && a.state === 'split-right-top') return { ...a, state: 'split-right' as WindowState };
+            if (a.state.startsWith('split-') && !a.state.includes('sidebar')) {
+              return { ...a, state: states[i++] };
+            }
+            return a;
+          });
+        }
+        
+        if (count === 2) {
+          // Reflow to 2 columns (Dual Split)
+          const states: WindowState[] = ['split-left', 'split-right'];
+          setSplitRatios([0.5, 0.66]);
+          let i = 0;
+          return filteredApps.map(a => {
+            if (a.state.startsWith('split-') && !a.state.includes('sidebar')) {
+              return { ...a, state: states[i++] };
+            }
             return a;
           });
         }
 
-        if (remainingSplits.length === 2) {
-          const wasTripleVertical = prev.some(a => a.state === 'split-middle');
-          if (wasTripleVertical) {
-            setSplitRatios([0.5, 0.66]);
-            return filteredApps.map(a => {
-              if (a.state === 'split-middle') {
-                const newState = closingApp.state === 'split-left' ? 'split-left' : 'split-right';
-                return { ...a, state: newState as WindowState };
-              }
-              return a;
-            });
-          }
-
-          const wasRightTSplit = prev.some(a => a.state === 'split-right-top');
-          if (wasRightTSplit) {
-            setSplitRatios([0.5, 0.66]);
-            if (closingApp.state === 'split-left') {
-              return filteredApps.map(a => {
-                if (a.state === 'split-right-top') return { ...a, state: 'split-left' as WindowState };
-                if (a.state === 'split-right-bottom') return { ...a, state: 'split-right' as WindowState };
-                return a;
-              });
+        if (count === 1) {
+          // Reflow to maximized
+          return filteredApps.map(a => {
+            if (a.id === splitAfter[0].id) {
+              return { ...a, state: 'maximized' as WindowState };
             }
-            return filteredApps.map(a => {
-              if (a.state === 'split-right-top' || a.state === 'split-right-bottom') return { ...a, state: 'split-right' as WindowState };
-              return a;
-            });
-          }
-
-          const wasLeftTSplit = prev.some(a => a.state === 'split-left-top');
-          if (wasLeftTSplit) {
-            setSplitRatios([0.5, 0.66]);
-            if (closingApp.state === 'split-right') {
-                return filteredApps.map(a => {
-                    if (a.state === 'split-left-top') return { ...a, state: 'split-left' as WindowState };
-                    if (a.state === 'split-left-bottom') return { ...a, state: 'split-right' as WindowState };
-                    return a;
-                });
-            }
-            return filteredApps.map(a => {
-                if (a.state === 'split-left-top' || a.state === 'split-left-bottom') return { ...a, state: 'split-left' as WindowState };
-                return a;
-            });
-          }
-        }
-        
-        if (remainingSplits.length === 1) {
-          return filteredApps.map(a => a.id === remainingSplits[0].id ? { ...a, state: 'maximized' as WindowState } : a);
+            return a;
+          });
         }
       }
+
       return filteredApps;
     });
     if (activeAppId === id) setActiveAppId(null);
