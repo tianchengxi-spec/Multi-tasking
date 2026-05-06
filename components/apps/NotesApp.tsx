@@ -1,49 +1,58 @@
 
 import React, { useState } from 'react';
 import { Plus, Search, Tag, MoreVertical } from 'lucide-react';
+import { WindowState } from '../../types';
 
-const NotesApp: React.FC = () => {
+interface NotesAppProps {
+  state?: WindowState;
+}
+
+const NotesApp: React.FC<NotesAppProps> = ({ state }) => {
   const [notes] = useState([
     { id: '1', title: '交互设计论文', preview: '专注于平板环境中的多模态反馈循环...', date: '2分钟前' },
     { id: '2', title: '购物清单', preview: '苹果、牛奶、面包、新触控笔、Paperwhite显示屏...', date: '1小时前' },
     { id: '3', title: '会议记录：Nexus OS', preview: '多任务体验应该是流畅且无摩擦的...', date: '昨天' },
   ]);
 
+  const isSplit = state?.startsWith('split-') && state !== 'split-sidebar-left' && state !== 'split-sidebar-right';
+
   return (
     <div className="flex h-full bg-white">
-      {/* Sidebar */}
-      <div className="w-64 border-r border-slate-100 flex flex-col shrink-0">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="font-bold text-slate-800 text-sm">我的备忘录</h2>
-          <button className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 transition-colors">
-            <Plus size={18} />
-          </button>
-        </div>
-        <div className="p-3">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input 
-              type="text" 
-              placeholder="搜索备忘录..." 
-              className="w-full bg-slate-100 rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
-            />
+      {/* Sidebar - Hidden if in split view */}
+      {!isSplit && (
+        <div className="w-64 border-r border-slate-100 flex flex-col shrink-0">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 className="font-bold text-slate-800 text-sm">我的备忘录</h2>
+            <button className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 transition-colors">
+              <Plus size={18} />
+            </button>
           </div>
-          <div className="space-y-1">
-            {notes.map(note => (
-              <div key={note.id} className="p-3 rounded-xl hover:bg-blue-50 cursor-pointer transition-colors group">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-semibold text-[13px] text-slate-800 truncate">{note.title}</h3>
-                  <span className="text-[10px] text-slate-400 shrink-0">{note.date}</span>
+          <div className="p-3">
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+              <input 
+                type="text" 
+                placeholder="搜索备忘录..." 
+                className="w-full bg-slate-100 rounded-lg py-2 pl-9 pr-3 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+            <div className="space-y-1">
+              {notes.map(note => (
+                <div key={note.id} className="p-3 rounded-xl hover:bg-blue-50 cursor-pointer transition-colors group">
+                  <div className="flex justify-between items-start mb-1">
+                    <h3 className="font-semibold text-[13px] text-slate-800 truncate">{note.title}</h3>
+                    <span className="text-[10px] text-slate-400 shrink-0">{note.date}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 line-clamp-2">{note.preview}</p>
                 </div>
-                <p className="text-[11px] text-slate-500 line-clamp-2">{note.preview}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Editor Placeholder */}
-      <div className="flex-1 flex flex-col p-8 max-w-2xl mx-auto">
+      <div className={`flex-1 flex flex-col ${isSplit ? 'p-4' : 'p-8'} max-w-2xl mx-auto`}>
         <div className="flex items-center justify-between mb-8">
           <div className="flex gap-2">
             <span className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-[10px] font-bold uppercase tracking-wider">研究</span>

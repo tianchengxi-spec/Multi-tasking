@@ -45,7 +45,7 @@ const Desktop: React.FC<DesktopProps> = ({
 
   const renderAppContent = (app: AppInstance) => {
     switch (app.type) {
-      case AppType.NOTES: return <NotesApp />;
+      case AppType.NOTES: return <NotesApp state={app.state} />;
       case AppType.BROWSER: return <BrowserApp />;
       case AppType.AI_ASSISTANT: return <GeminiApp apps={apps} />;
       case AppType.FILES: return <FilesApp />;
