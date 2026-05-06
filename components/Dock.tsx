@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { AppType } from '../types';
+import { AppType, TaskCombination } from '../types';
 import { APP_CONFIG } from '../constants';
 
 interface DockProps {
@@ -12,6 +12,9 @@ interface DockProps {
   onDragStart?: (type: AppType, x: number, y: number) => void;
   onDragMove?: (x: number, y: number) => void;
   onDragEnd?: () => void;
+  savedCombinations: TaskCombination[];
+  onRestoreCombination: (combo: TaskCombination) => void;
+  onRemoveCombination: (id: string) => void;
 }
 
 const Dock: React.FC<DockProps> = ({ 
@@ -22,7 +25,10 @@ const Dock: React.FC<DockProps> = ({
   onVisibilityChange,
   onDragStart,
   onDragMove,
-  onDragEnd
+  onDragEnd,
+  savedCombinations,
+  onRestoreCombination,
+  onRemoveCombination
 }) => {
   const [activePress, setActivePress] = useState<AppType | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -220,11 +226,35 @@ const Dock: React.FC<DockProps> = ({
         
         <div className="w-[1px] h-10 bg-slate-300/40 mx-1 self-center" />
         
-        <div className="flex items-center justify-center w-14 h-14 bg-slate-200/30 border border-slate-200/50 rounded-[1.25rem] group transition-colors">
-           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse mx-0.5" />
-           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.2s] mx-0.5" />
-           <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.4s] mx-0.5" />
-        </div>
+        {savedCombinations.map((combo) => (
+          <button
+            key={combo.id}
+            onClick={() => onRestoreCombination(combo)}
+            onContextMenu={(e) => { e.preventDefault(); onRemoveCombination(combo.id); }}
+            className="relative group transition-all duration-300 touch-none select-none outline-none hover:-translate-y-2 active:scale-95"
+          >
+             <div className="w-14 h-14 bg-white/40 backdrop-blur-md rounded-[1.25rem] border border-white/40 overflow-hidden relative p-1.5 shadow-sm group-hover:shadow-xl transition-all">
+                <div className={`w-full h-full grid ${combo.apps.length > 2 ? 'grid-cols-2 grid-rows-2' : (combo.apps.length === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1')} gap-0.5 rounded-lg overflow-hidden`}>
+                   {combo.apps.map((app, i) => (
+                     <div key={i} className={`flex items-center justify-center ${APP_CONFIG[app.type].color} bg-opacity-40`}>
+                        {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: combo.apps.length > 2 ? 12 : 20 })}
+                     </div>
+                   ))}
+                </div>
+             </div>
+             <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10 whitespace-nowrap">
+                任务组合
+             </div>
+          </button>
+        ))}
+        
+        {savedCombinations.length === 0 && (
+          <div className="flex items-center justify-center w-14 h-14 bg-slate-200/30 border border-slate-200/50 rounded-[1.25rem] group transition-colors">
+             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse mx-0.5" />
+             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.2s] mx-0.5" />
+             <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-pulse [animation-delay:0.4s] mx-0.5" />
+          </div>
+        )}
       </div>
     </div>
   );

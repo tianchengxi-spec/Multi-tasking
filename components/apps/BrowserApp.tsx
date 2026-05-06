@@ -1,8 +1,15 @@
 
 import React from 'react';
 import { ChevronLeft, ChevronRight, RotateCcw, Home, Search, Lock } from 'lucide-react';
+import { WindowState } from '../../types';
 
-const BrowserApp: React.FC = () => {
+interface BrowserAppProps {
+  state?: WindowState;
+}
+
+const BrowserApp: React.FC<BrowserAppProps> = ({ state }) => {
+  const isSplit = state?.startsWith('split-') && state !== 'split-sidebar-left' && state !== 'split-sidebar-right';
+
   return (
     <div className="flex flex-col h-full bg-slate-100">
       {/* Toolbar */}
@@ -10,15 +17,21 @@ const BrowserApp: React.FC = () => {
         <div className="flex gap-1">
           <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft size={18} /></button>
           <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight size={18} /></button>
-          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><RotateCcw size={18} /></button>
+          {!isSplit && <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><RotateCcw size={18} /></button>}
         </div>
-        <div className="flex-1 flex items-center bg-slate-100 rounded-xl px-4 py-1.5 border border-slate-200">
-          <Lock size={12} className="text-emerald-500 mr-2" />
-          <span className="text-sm text-slate-600 truncate">https://nexus-research.org/papers/spatial-memory-multitasking-2026</span>
-        </div>
+        
+        {!isSplit && (
+          <div className="flex-1 flex items-center bg-slate-100 rounded-xl px-4 py-1.5 border border-slate-200">
+            <Lock size={12} className="text-emerald-500 mr-2" />
+            <span className="text-sm text-slate-600 truncate">https://nexus-research.org/papers/spatial-memory-multitasking-2026</span>
+          </div>
+        )}
+
+        {isSplit && <div className="flex-1" />}
+
         <div className="flex gap-2">
            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Search size={18} /></button>
-           <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Home size={18} /></button>
+           {!isSplit && <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Home size={18} /></button>}
         </div>
       </div>
 

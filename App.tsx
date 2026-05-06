@@ -52,19 +52,24 @@ const App: React.FC = () => {
   const [activeTriggerZone, setActiveTriggerZone] = useState<'left' | 'right' | 'floating' | 'divider' | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [savedCombinations, setSavedCombinations] = useState<TaskCombination[]>([]);
+  const [showSaveButton, setShowSaveButton] = useState(false);
+  const [saveButtonPos, setSaveButtonPos] = useState({ x: 0, y: 0 });
+  const saveButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
     const preventDefault = (e: TouchEvent) => {
-      if (dragIcon || resizingDividerIndex !== null) {
+      if (dragIcon || resizingDividerIndex !== null || showSaveButton) {
         e.preventDefault();
       }
     };
 
-    if (dragIcon || resizingDividerIndex !== null) {
+    if (dragIcon || resizingDividerIndex !== null || showSaveButton) {
       window.addEventListener('touchmove', preventDefault, { passive: false });
     }
     return () => window.removeEventListener('touchmove', preventDefault);
-  }, [dragIcon, resizingDividerIndex]);
+  }, [dragIcon, resizingDividerIndex, showSaveButton]);
 
   const splitApps = useMemo(() => 
     apps.filter(a => a.state.startsWith('split-')),
@@ -574,6 +579,7 @@ const App: React.FC = () => {
           splitRatios={splitRatios}
           onClickWallpaper={() => {
             if (hasOpenApps) setIsDockVisible(false);
+            setShowSaveButton(false);
           }}
           isResizing={resizingDividerIndex !== null}
           onDragAppStart={(id, x, y) => {
@@ -596,6 +602,38 @@ const App: React.FC = () => {
         isVisible={isDockVisible}
         onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverFloatingZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false })}
         onVisibilityChange={setIsDockVisible}
+        savedCombinations={savedCombinations}
+        onRestoreCombination={(combo) => {
+          setApps(prev => {
+            // Minimize current apps
+            const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
+            
+            // Add or Restore apps from combo
+            const newApps = [...minimized];
+            combo.apps.forEach((appData, index) => {
+              const existingIdx = newApps.findIndex(a => a.type === appData.type);
+              const newApp: AppInstance = {
+                id: Math.random().toString(36).substr(2, 9),
+                type: appData.type,
+                title: appData.type,
+                state: appData.state,
+                zIndex: 10 + index,
+                position: { x: 0, y: 0 },
+                size: { width: '100%', height: '100%' }
+              };
+              if (existingIdx !== -1) {
+                newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state, zIndex: 10 + index };
+              } else {
+                newApps.push(newApp);
+              }
+            });
+            return newApps;
+          });
+          if (combo.apps.length === 2) setSplitRatios([0.5, 0.66]);
+          if (combo.apps.length === 3) setSplitRatios([0.33, 0.66]);
+          setIsDockVisible(false);
+        }}
+        onRemoveCombination={(id) => setSavedCombinations(prev => prev.filter(c => c.id !== id))}
       />
 
       {/* Home Indicator / Trigger Zone (Invisible) */}
@@ -626,7 +664,24 @@ const App: React.FC = () => {
                 transform: 'translateX(-50%)', 
                 touchAction: 'none' 
               }}
-              onPointerDown={(e) => { e.stopPropagation(); setResizingDividerIndex(0); }}
+              onPointerDown={(e) => { 
+                e.stopPropagation(); 
+                setResizingDividerIndex(0); 
+                const { clientX, clientY } = e;
+                if (saveButtonTimerRef.current) clearTimeout(saveButtonTimerRef.current);
+                saveButtonTimerRef.current = setTimeout(() => {
+                  setShowSaveButton(true);
+                  setSaveButtonPos({ x: clientX, y: clientY - 80 });
+                  if (window.navigator.vibrate) window.navigator.vibrate(50);
+                }, 600);
+              }}
+              onPointerUp={() => { if (saveButtonTimerRef.current) clearTimeout(saveButtonTimerRef.current); }}
+              onPointerMove={(e) => {
+                if (resizingDividerIndex === 0 && saveButtonTimerRef.current) {
+                   clearTimeout(saveButtonTimerRef.current);
+                   saveButtonTimerRef.current = null;
+                }
+              }}
             >
               <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 0 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''} ${activeTriggerZone === 'divider' ? 'bg-rose-500 h-40 w-1.5 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : ''}`} />
             </div>
@@ -705,6 +760,40 @@ const App: React.FC = () => {
                 {APP_CONFIG[dragIcon.type].icon}
              </div>
           </div>
+        </div>
+      )}
+
+      {showSaveButton && (
+        <div 
+          className="absolute z-[200] flex items-center justify-center animate-in fade-in zoom-in duration-300"
+          style={{ left: saveButtonPos.x, top: saveButtonPos.y, transform: 'translateX(-50%)' }}
+        >
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              const splitApps = apps.filter(a => a.state.startsWith('split-'));
+              if (splitApps.length >= 2) {
+                const newCombo: TaskCombination = {
+                  id: Math.random().toString(36).substr(2, 9),
+                  apps: splitApps.map(a => ({ type: a.type, state: a.state })),
+                  timestamp: Date.now()
+                };
+                setSavedCombinations(prev => [...prev, newCombo]);
+                setShowSaveButton(false);
+                if (window.navigator.vibrate) window.navigator.vibrate([10, 30, 20]);
+              }
+            }}
+            className="flex items-center gap-2 px-6 py-3 bg-white/90 backdrop-blur-xl border border-white/50 text-slate-800 rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.15)] hover:bg-white transition-all active:scale-95 group overflow-hidden"
+          >
+            <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+              <Plus size={20} fill="currentColor" />
+            </div>
+            <span className="font-bold text-sm">保存当前任务组合</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+          </button>
+          
+          {/* Connector triangle */}
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/90 backdrop-blur-xl border-r border-b border-white/50 rotate-45" />
         </div>
       )}
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>

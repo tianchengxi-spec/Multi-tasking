@@ -23,6 +23,12 @@ export interface AppInstance {
   size: { width: number | string; height: number | string };
 }
 
+export interface TaskCombination {
+  id: string;
+  apps: { type: AppType; state: WindowState }[];
+  timestamp: number;
+}
+
 export interface SystemState {
   isControlCenterOpen: boolean;
   activeAppId: string | null;
