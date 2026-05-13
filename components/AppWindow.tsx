@@ -192,7 +192,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
       ) : (
         <>
           <div 
-            className={`h-12 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
+            className={`min-h-[88px] pt-10 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
             onPointerDown={(e) => {
               if (app.state === 'floating' && onDragStart) {
                 onDragStart(app.id, e.clientX, e.clientY);

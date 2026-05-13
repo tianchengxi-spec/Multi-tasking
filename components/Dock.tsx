@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { AppType, TaskCombination } from '../types';
 import { APP_CONFIG } from '../constants';
 
@@ -16,6 +17,113 @@ interface DockProps {
   onRestoreCombination: (combo: TaskCombination) => void;
   onRemoveCombination: (id: string) => void;
 }
+
+interface TaskCombinationItemProps {
+  combo: TaskCombination;
+  onRestoreCombination: (combo: TaskCombination) => void;
+  onRemoveCombination: (id: string) => void;
+}
+
+const TaskCombinationItem: React.FC<TaskCombinationItemProps> = ({ combo, onRestoreCombination, onRemoveCombination }) => {
+  const [isAwakened, setIsAwakened] = useState(false);
+  const [dragPos, setDragPos] = useState({ x: 0, y: 0 });
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const startPosRef = useRef<{ x: number, y: number } | null>(null);
+
+  const startPress = (e: React.PointerEvent) => {
+    const { clientX, clientY } = e;
+    startPosRef.current = { x: clientX, y: clientY };
+    setIsAwakened(false);
+    setDragPos({ x: 0, y: 0 });
+
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      setIsAwakened(true);
+      if (window.navigator.vibrate) window.navigator.vibrate(100);
+    }, 600);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!startPosRef.current) return;
+    
+    const deltaX = e.clientX - startPosRef.current.x;
+    const deltaY = e.clientY - startPosRef.current.y;
+
+    if (isAwakened) {
+      setDragPos({ x: deltaX, y: deltaY });
+    } else if (Math.sqrt(deltaX * deltaX + deltaY * deltaY) > 10) {
+      // Cancel long press if moved too much before awakening
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
+  };
+
+  const cancelPress = (e: React.PointerEvent) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+
+    if (isAwakened) {
+      // Check if dragged out of dock (upwards)
+      if (dragPos.y < -100) {
+        onRemoveCombination(combo.id);
+      } else {
+        // Snap back
+        setIsAwakened(false);
+        setDragPos({ x: 0, y: 0 });
+      }
+    } else if (startPosRef.current) {
+      // Short press: restore
+      onRestoreCombination(combo);
+    }
+    
+    startPosRef.current = null;
+  };
+
+  return (
+    <motion.div
+      layout
+      onPointerDown={startPress}
+      onPointerMove={handlePointerMove}
+      onPointerUp={cancelPress}
+      onPointerLeave={cancelPress}
+      animate={{ 
+        x: dragPos.x, 
+        y: dragPos.y, 
+        scale: isAwakened ? 1.1 : 1,
+        rotate: isAwakened ? [0, -1, 1, -1, 0] : 0
+      }}
+      transition={isAwakened && dragPos.x === 0 && dragPos.y === 0 ? {
+        rotate: { repeat: Infinity, duration: 0.2 },
+        scale: { duration: 0.2 }
+      } : { type: 'spring', stiffness: 500, damping: 30 }}
+      className={`relative group transition-shadow duration-300 touch-none select-none outline-none z-[10] ${isAwakened ? 'z-[200]' : ''}`}
+    >
+       <div className={`w-14 h-14 bg-white/40 backdrop-blur-md rounded-[1.25rem] border ${isAwakened ? 'border-rose-400' : 'border-white/40'} overflow-hidden relative p-1.5 shadow-sm group-hover:shadow-xl transition-all`}>
+          <div className={`w-full h-full grid ${combo.apps.length > 2 ? 'grid-cols-2 grid-rows-2' : (combo.apps.length === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1')} gap-0.5 rounded-lg overflow-hidden`}>
+             {combo.apps.map((app, i) => (
+               <div key={i} className={`flex items-center justify-center ${APP_CONFIG[app.type].color} bg-opacity-40`}>
+                  {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: combo.apps.length > 2 ? 12 : 20 })}
+               </div>
+             ))}
+          </div>
+          {isAwakened && dragPos.y < -60 && (
+            <div className="absolute inset-0 bg-rose-500/20 flex items-center justify-center animate-pulse">
+               <div className="w-1.5 h-1.5 bg-rose-500 rounded-full" />
+            </div>
+          )}
+       </div>
+       {!isAwakened && (
+         <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10 whitespace-nowrap">
+            任务组合
+         </div>
+       )}
+    </motion.div>
+  );
+};
 
 const Dock: React.FC<DockProps> = ({ 
   openApps, 
@@ -75,7 +183,7 @@ const Dock: React.FC<DockProps> = ({
     AppType.AI_ASSISTANT,
     AppType.CALENDAR,
     AppType.CALCULATOR,
-    AppType.ALIPAY,
+    AppType.CLOUD_DRIVE,
     AppType.SETTINGS
   ];
 
@@ -227,25 +335,12 @@ const Dock: React.FC<DockProps> = ({
         <div className="w-[1px] h-10 bg-slate-300/40 mx-1 self-center" />
         
         {savedCombinations.map((combo) => (
-          <button
+          <TaskCombinationItem 
             key={combo.id}
-            onClick={() => onRestoreCombination(combo)}
-            onContextMenu={(e) => { e.preventDefault(); onRemoveCombination(combo.id); }}
-            className="relative group transition-all duration-300 touch-none select-none outline-none hover:-translate-y-2 active:scale-95"
-          >
-             <div className="w-14 h-14 bg-white/40 backdrop-blur-md rounded-[1.25rem] border border-white/40 overflow-hidden relative p-1.5 shadow-sm group-hover:shadow-xl transition-all">
-                <div className={`w-full h-full grid ${combo.apps.length > 2 ? 'grid-cols-2 grid-rows-2' : (combo.apps.length === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1')} gap-0.5 rounded-lg overflow-hidden`}>
-                   {combo.apps.map((app, i) => (
-                     <div key={i} className={`flex items-center justify-center ${APP_CONFIG[app.type].color} bg-opacity-40`}>
-                        {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: combo.apps.length > 2 ? 12 : 20 })}
-                     </div>
-                   ))}
-                </div>
-             </div>
-             <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10 whitespace-nowrap">
-                任务组合
-             </div>
-          </button>
+            combo={combo}
+            onRestoreCombination={onRestoreCombination}
+            onRemoveCombination={onRemoveCombination}
+          />
         ))}
         
         {savedCombinations.length === 0 && (

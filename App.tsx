@@ -17,6 +17,8 @@ interface DragIconState {
   isOverDivider: boolean;
 }
 
+import OnboardingModal from './components/OnboardingModal';
+
 const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
@@ -56,6 +58,32 @@ const App: React.FC = () => {
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveButtonPos, setSaveButtonPos] = useState({ x: 0, y: 0 });
   const saveButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Click tracking for onboarding
+  const [clickCount, setClickCount] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const lastClickTimeRef = useRef<number>(0);
+
+  const handleWallpaperClick = () => {
+    if (hasOpenApps) {
+      setIsDockVisible(false);
+    }
+    setShowSaveButton(false);
+
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 500) {
+      const newCount = clickCount + 1;
+      if (newCount >= 4) {
+        setShowOnboarding(true);
+        setClickCount(0);
+      } else {
+        setClickCount(newCount);
+      }
+    } else {
+      setClickCount(1);
+    }
+    lastClickTimeRef.current = now;
+  };
 
   // Prevent scrolling on mobile when dragging
   useEffect(() => {
@@ -547,16 +575,83 @@ const App: React.FC = () => {
   const lOffset = hasSidebarLeft ? sidebarWidth : 0;
   const rOffset = hasSidebarRight ? sidebarWidth : 0;
 
+  const shouldUseDarkIcons = useMemo(() => {
+    return apps.some(app => {
+      if (app.state === 'minimized' || app.state === 'floating-icon') return false;
+      if (app.state === 'maximized') return true;
+      if (app.state.startsWith('split-')) {
+        // Exclude bottom split states as they don't cover the top status bar area
+        if (app.state === 'split-left-bottom' || app.state === 'split-right-bottom') return false;
+        return true;
+      }
+      if (app.state === 'floating') {
+        // If a floating window is at the very top (y < 40), switch to dark icons
+        return app.position.y < 40;
+      }
+      return false;
+    });
+  }, [apps]);
+
+  const startStudy = useCallback(() => {
+    const newZIndex = zIndexCounter + 2;
+    const driveId = Math.random().toString(36).substr(2, 9);
+    const notesId = Math.random().toString(36).substr(2, 9);
+
+    const driveApp: AppInstance = {
+      id: driveId,
+      type: AppType.CLOUD_DRIVE,
+      title: AppType.CLOUD_DRIVE,
+      state: 'split-left',
+      zIndex: newZIndex - 1,
+      position: { x: 0, y: 0 },
+      size: { width: '60%', height: '100%' }
+    };
+
+    const notesApp: AppInstance = {
+      id: notesId,
+      type: AppType.NOTES,
+      title: AppType.NOTES,
+      state: 'split-right',
+      zIndex: newZIndex,
+      position: { x: 0, y: 0 },
+      size: { width: '40%', height: '100%' }
+    };
+
+    setApps(prev => {
+      const others = prev.filter(a => a.type !== AppType.CLOUD_DRIVE && a.type !== AppType.NOTES).map(a => ({...a, state: 'minimized' as WindowState}));
+      return [...others, driveApp, notesApp];
+    });
+
+    setSplitRatios([0.6, 0.66]);
+    setActiveAppId(notesId);
+    setZIndexCounter(newZIndex + 1);
+    setIsDockVisible(false);
+  }, [zIndexCounter]);
+
   return (
     <div 
-      className="h-screen w-screen flex flex-col bg-slate-50 overflow-hidden relative border-[12px] border-slate-900 rounded-[3rem] shadow-2xl select-none"
+      className="h-screen w-screen flex flex-col overflow-hidden relative border-[12px] border-slate-900 rounded-[3rem] shadow-2xl select-none"
       onPointerUp={handlePointerUpGlobal}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerUpGlobal}
       style={{ touchAction: 'none' }}
     >
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#F8FAFC]">
-        <SystemBar />
+      {/* Global Background Wallpaper */}
+      <img 
+        src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=100&w=3840" 
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none z-[-1]"
+        alt="Wallpaper"
+        referrerPolicy="no-referrer"
+      />
+
+      {/* Glassmorphism/Overlay Layer */}
+      <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px] pointer-events-none z-[-1]" />
+      <div className="absolute inset-0 opacity-[0.05] pointer-events-none z-[-1]" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="absolute top-0 w-full z-50">
+          <SystemBar isDark={shouldUseDarkIcons} />
+        </div>
         <Desktop 
           apps={apps}
           activeAppId={activeAppId}
@@ -577,10 +672,7 @@ const App: React.FC = () => {
           }}
           onOpenApp={openApp}
           splitRatios={splitRatios}
-          onClickWallpaper={() => {
-            if (hasOpenApps) setIsDockVisible(false);
-            setShowSaveButton(false);
-          }}
+          onClickWallpaper={handleWallpaperClick}
           isResizing={resizingDividerIndex !== null}
           onDragAppStart={(id, x, y) => {
             const app = apps.find(a => a.id === id);
@@ -592,6 +684,7 @@ const App: React.FC = () => {
               setActiveAppId(id);
             }
           }}
+          onStartStudy={startStudy}
         />
       </div>
 
@@ -629,8 +722,14 @@ const App: React.FC = () => {
             });
             return newApps;
           });
-          if (combo.apps.length === 2) setSplitRatios([0.5, 0.66]);
-          if (combo.apps.length === 3) setSplitRatios([0.33, 0.66]);
+          
+          if (combo.splitRatios) {
+            setSplitRatios(combo.splitRatios);
+          } else {
+            if (combo.apps.length === 2) setSplitRatios([0.5, 0.66]);
+            if (combo.apps.length === 3) setSplitRatios([0.33, 0.66]);
+          }
+          
           setIsDockVisible(false);
         }}
         onRemoveCombination={(id) => setSavedCombinations(prev => prev.filter(c => c.id !== id))}
@@ -723,19 +822,13 @@ const App: React.FC = () => {
             <div 
               className={`absolute right-0 top-0 w-64 h-64 transition-all duration-500 rounded-bl-full flex items-center justify-center ${activeTriggerZone === 'floating' ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 translate-x-12 -translate-y-12'}`}
               style={{ 
-                background: 'rgba(251, 113, 154, 0.1)',
-                borderLeft: '2px dashed rgba(251, 113, 154, 0.3)',
-                borderBottom: '2px dashed rgba(251, 113, 154, 0.3)',
-                backdropFilter: 'blur(12px)',
+                background: 'radial-gradient(circle at 70% 30%, rgba(251, 113, 154, 0.45) 0%, transparent 75%)',
+                backdropFilter: 'blur(16px)',
                 transformOrigin: 'top right'
               }}
             >
               <div className="text-center pt-4 pl-8">
-                <div className="w-10 h-10 bg-rose-500 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-rose-500/30">
-                  <Plus className="text-white" size={20} />
-                </div>
-                <p className="text-rose-600 font-black text-base leading-tight uppercase tracking-tighter">松手开启小窗</p>
-                <p className="text-rose-400 text-[10px] font-bold uppercase tracking-widest mt-1 opacity-80">Floating Window</p>
+                <p className="text-rose-600 font-bold text-sm leading-tight uppercase tracking-tighter">松手开启小窗</p>
               </div>
             </div>
           )}
@@ -776,6 +869,7 @@ const App: React.FC = () => {
                 const newCombo: TaskCombination = {
                   id: Math.random().toString(36).substr(2, 9),
                   apps: splitApps.map(a => ({ type: a.type, state: a.state })),
+                  splitRatios: [...splitRatios],
                   timestamp: Date.now()
                 };
                 setSavedCombinations(prev => [...prev, newCombo]);
@@ -796,6 +890,12 @@ const App: React.FC = () => {
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white/90 backdrop-blur-xl border-r border-b border-white/50 rotate-45" />
         </div>
       )}
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onClose={() => setShowOnboarding(false)} 
+        onConfirm={() => setShowOnboarding(false)} 
+      />
+      
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>
     </div>
   );

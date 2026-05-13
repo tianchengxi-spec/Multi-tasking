@@ -8,7 +8,7 @@ export enum AppType {
   SETTINGS = 'Settings',
   XIAOHONGSHU = '小红书',
   CALCULATOR = '计算器',
-  ALIPAY = '支付宝'
+  CLOUD_DRIVE = '网盘'
 }
 
 export type WindowState = 'floating' | 'floating-icon' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized' | 'split-sidebar-left' | 'split-sidebar-right';
@@ -26,6 +26,7 @@ export interface AppInstance {
 export interface TaskCombination {
   id: string;
   apps: { type: AppType; state: WindowState }[];
+  splitRatios: number[];
   timestamp: number;
 }
 
