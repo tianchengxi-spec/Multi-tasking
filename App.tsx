@@ -19,6 +19,8 @@ interface DragIconState {
 
 import OnboardingModal from './components/OnboardingModal';
 import CreateBoardPanel from './components/CreateBoardPanel';
+import ControlCenter from './components/ControlCenter';
+import ToolRingController from './components/ToolRingController';
 
 const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
@@ -26,6 +28,7 @@ const App: React.FC = () => {
   const [zIndexCounter, setZIndexCounter] = useState(10);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+  const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const touchStartY = useRef<number | null>(null);
@@ -56,7 +59,25 @@ const App: React.FC = () => {
   const [activeTriggerZone, setActiveTriggerZone] = useState<'left' | 'right' | 'floating' | 'divider' | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [savedCombinations, setSavedCombinations] = useState<TaskCombination[]>([]);
+  const [swappingAppId, setSwappingAppId] = useState<string | null>(null);
+  const [swappingOverId, setSwappingOverId] = useState<string | null>(null);
+  const [swapIconPos, setSwapIconPos] = useState({ x: 0, y: 0 });
+
+  const [savedCombinations, setSavedCombinations] = useState<TaskCombination[]>([
+    {
+      id: 'default-toolring',
+      name: '快捷工具环',
+      apps: [
+        { type: AppType.AI_ASSISTANT },
+        { type: AppType.CALCULATOR },
+        { type: AppType.DICTIONARY },
+        { type: AppType.CALENDAR },
+        { type: AppType.WHITEBOARD }
+      ],
+      mode: 'toolring',
+      color: 'blue'
+    }
+  ]);
   const [showSaveButton, setShowSaveButton] = useState(false);
   const [saveButtonPos, setSaveButtonPos] = useState({ x: 0, y: 0 });
   const saveButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -158,8 +179,8 @@ const App: React.FC = () => {
               ...a, 
               state: 'floating-icon' as WindowState,
               zIndex: newZIndex - 1,
-              position: { x: window.innerWidth - 280 - 40, y: 40 },
-              size: { width: 280, height: 480 }
+              position: { x: window.innerWidth - 270 - 40, y: 40 },
+              size: { width: 270, height: 450 }
             };
           }
           return a;
@@ -208,8 +229,8 @@ const App: React.FC = () => {
                 ...a, 
                 state: 'floating-icon' as WindowState,
                 zIndex: newZIndex - 1,
-                position: { x: window.innerWidth - 280 - 40, y: 40 },
-                size: { width: 280, height: 480 }
+                position: { x: window.innerWidth - 270 - 40, y: 40 },
+                size: { width: 270, height: 450 }
               };
             }
             return a;
@@ -219,7 +240,7 @@ const App: React.FC = () => {
           const newAppInstance: AppInstance = {
             id: newId,
             type,
-            title: APP_CONFIG[type].title,
+            title: type,
             state: targetState,
             zIndex: newZIndex,
             position: { x: 0, y: 0 },
@@ -364,8 +385,8 @@ const App: React.FC = () => {
           ...a, 
           state: (forceState as WindowState) || 'maximized', 
           zIndex: newZIndex,
-          size: forceState === 'floating' ? { width: 360, height: 600 } : { width: '100%', height: '100%' },
-          position: forceState === 'floating' ? { x: screenWidth - 360 - 16, y: 16 } : { x: 0, y: 0 }
+          size: forceState === 'floating' ? { width: 270, height: 450 } : { width: '100%', height: '100%' },
+          position: forceState === 'floating' ? { x: screenWidth - 270 - 16, y: 16 } : { x: 0, y: 0 }
         } : a
       ));
       setActiveAppId(existingApp.id);
@@ -381,8 +402,8 @@ const App: React.FC = () => {
       title: type,
       state: newState,
       zIndex: newZIndex,
-      position: newState === 'floating' ? { x: screenWidth - 360 - 16, y: 16 } : { x: 0, y: 0 },
-      size: newState === 'floating' ? { width: 360, height: 600 } : { width: '100%', height: '100%' }
+      position: newState === 'floating' ? { x: screenWidth - 270 - 16, y: 16 } : { x: 0, y: 0 },
+      size: newState === 'floating' ? { width: 270, height: 450 } : { width: '100%', height: '100%' }
     };
     setApps(prev => [...prev, newApp]);
     setActiveAppId(newId);
@@ -466,6 +487,42 @@ const App: React.FC = () => {
   }, [activeAppId]);
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    if (swappingAppId) {
+      const x = e.clientX;
+      const y = e.clientY;
+      setSwapIconPos({ x, y });
+      
+      // Basic hit testing for split windows
+      const screenWidth = window.innerWidth;
+      const workingWidth = screenWidth - lOffset - rOffset;
+      const leftBoundary = lOffset + splitRatios[0] * workingWidth;
+      const rightBoundary = lOffset + splitRatios[1] * workingWidth;
+      
+      const targetApp = apps.find(a => {
+        if (a.id === swappingAppId || a.state === 'minimized') return false;
+        
+        if (x < leftBoundary) {
+          return a.state === 'split-left' || a.state === 'split-left-top' || a.state === 'split-left-bottom';
+        } else if (isTripleSplit && x < rightBoundary) {
+          return a.state === 'split-middle';
+        } else {
+          return a.state === 'split-right' || a.state === 'split-right-top' || a.state === 'split-right-bottom';
+        }
+      });
+      
+      setSwappingOverId(targetApp?.id || null);
+      return;
+    }
+
+    // Top-right pull down detector
+    if (touchStartY.current !== null && !dragIcon && !draggingAppId && !resizingDividerIndex) {
+      const deltaY = e.clientY - touchStartY.current;
+      if (deltaY > 50 && touchStartY.current < 60 && e.clientX > window.innerWidth * 0.7) {
+        setIsControlCenterOpen(true);
+        touchStartY.current = null;
+      }
+    }
+
     if (draggingAppId) {
       const app = apps.find(a => a.id === draggingAppId);
       if (app && app.state === 'floating') {
@@ -476,8 +533,8 @@ const App: React.FC = () => {
         const screenHeight = window.innerHeight;
         
         // Window Size
-        const winW = 320;
-        const winH = 550;
+        const winW = 270;
+        const winH = 450;
         
         // Constraints (Safe Area)
         const minX = 16;
@@ -557,6 +614,27 @@ const App: React.FC = () => {
 
   const handlePointerUpGlobal = () => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    touchStartY.current = null;
+    if (swappingAppId) {
+      if (swappingOverId) {
+        setApps(prev => {
+          const app1 = prev.find(a => a.id === swappingAppId);
+          const app2 = prev.find(a => a.id === swappingOverId);
+          if (app1 && app2) {
+             const state1 = app1.state;
+             const state2 = app2.state;
+             return prev.map(a => {
+               if (a.id === swappingAppId) return { ...a, state: state2 };
+               if (a.id === swappingOverId) return { ...a, state: state1 };
+               return a;
+             });
+          }
+          return prev;
+        });
+      }
+      setSwappingAppId(null);
+      setSwappingOverId(null);
+    }
     setDraggingAppId(null);
     if (dragIcon) {
       // 3. Drop to Execute: Only if zone is verified (active)
@@ -570,6 +648,14 @@ const App: React.FC = () => {
     }
     setResizingDividerIndex(null);
   };
+
+  const togglePin = useCallback((id: string) => {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, isPinned: !a.isPinned } : a));
+  }, []);
+
+  const toggleTopmost = useCallback((id: string) => {
+    setApps(prev => prev.map(a => a.id === id ? { ...a, isTopmost: !a.isTopmost } : a));
+  }, []);
 
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
   const hasSidebarRight = useMemo(() => apps.some(a => a.state === 'split-sidebar-right'), [apps]);
@@ -616,7 +702,8 @@ const App: React.FC = () => {
       state: 'split-right',
       zIndex: newZIndex,
       position: { x: 0, y: 0 },
-      size: { width: '40%', height: '100%' }
+      size: { width: '40%', height: '100%' },
+      initialData: { noteId: '4' }
     };
 
     setApps(prev => {
@@ -650,7 +737,7 @@ const App: React.FC = () => {
       <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px] pointer-events-none z-[-1]" />
       <div className="absolute inset-0 opacity-[0.05] pointer-events-none z-[-1]" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-      <div className="flex-1 flex flex-col overflow-hidden relative">
+      <div className="flex-1 flex flex-col overflow-hidden relative" onPointerDown={(e) => { touchStartY.current = e.clientY; }}>
         <div className="absolute top-0 w-full z-50">
           <SystemBar isDark={shouldUseDarkIcons} />
         </div>
@@ -676,11 +763,23 @@ const App: React.FC = () => {
           splitRatios={splitRatios}
           onClickWallpaper={handleWallpaperClick}
           isResizing={resizingDividerIndex !== null}
+          swappingAppId={swappingAppId}
+          swappingOverId={swappingOverId}
           onDragAppStart={(id, x, y) => {
             const app = apps.find(a => a.id === id);
-            if (app && app.state === 'floating') {
+            if (!app) return;
+            
+            if (app.isPinned) return; // Prevent movement if pinned
+
+            if (app.state === 'floating') {
               setDraggingAppId(id);
               setDragOffset({ x: x - app.position.x, y: y - app.position.y });
+              setZIndexCounter(z => z + 1);
+              setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
+              setActiveAppId(id);
+            } else if (app.state.startsWith('split-')) {
+              setSwappingAppId(id);
+              setSwapIconPos({ x, y });
               setZIndexCounter(z => z + 1);
               setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
               setActiveAppId(id);
@@ -688,8 +787,46 @@ const App: React.FC = () => {
           }}
           onStartStudy={startStudy}
           onOpenCreator={() => setIsCreatorOpen(true)}
+          onTogglePin={togglePin}
+          onToggleTopmost={toggleTopmost}
         />
       </div>
+
+      <ControlCenter 
+        isOpen={isControlCenterOpen} 
+        onClose={() => setIsControlCenterOpen(false)} 
+      />
+
+      <ToolRingController 
+        combinations={savedCombinations}
+        onRestore={(combo) => {
+          setApps(prev => {
+            const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
+            const newApps = [...minimized];
+            combo.apps.forEach((appData, index) => {
+              const existingIdx = newApps.findIndex(a => a.type === appData.type);
+              const newId = Math.random().toString(36).substr(2, 9);
+              if (existingIdx !== -1) {
+                newApps[existingIdx] = { ...newApps[existingIdx], state: 'maximized' as WindowState, zIndex: zIndexCounter + 10 + index };
+              } else {
+                newApps.push({
+                  id: newId,
+                  type: appData.type,
+                  title: appData.type,
+                  state: 'maximized' as WindowState,
+                  zIndex: zIndexCounter + 10 + index,
+                  position: { x: 0, y: 0 },
+                  size: { width: '100%', height: '100%' }
+                });
+              }
+            });
+            return newApps;
+          });
+          setZIndexCounter(prev => prev + 20);
+          setIsDockVisible(false);
+        }}
+        onOpenSingleApp={(type) => openApp(type, 'floating')}
+      />
 
       <Dock 
         openApps={apps.map(a => a.type)}
@@ -818,6 +955,24 @@ const App: React.FC = () => {
         </>
       )}
 
+      {swappingAppId && (
+        <div 
+          className="absolute pointer-events-none z-[9999] transition-transform duration-75"
+          style={{ left: swapIconPos.x, top: swapIconPos.y, transform: 'translate(-50%, -50%) scale(1.1)' }}
+        >
+          {(() => {
+            const app = apps.find(a => a.id === swappingAppId);
+            if (!app) return null;
+            const config = APP_CONFIG[app.type];
+            return (
+              <div className={`${config.color} w-16 h-16 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white/50 backdrop-blur-md`}>
+                {React.cloneElement(config.icon as React.ReactElement<any>, { size: 32 })}
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {dragIcon && (
         <div className="absolute inset-0 z-[200] pointer-events-none overflow-hidden">
           {/* Floating Zone Indicator (Top-Right 1/4 Circle) */}
@@ -825,29 +980,29 @@ const App: React.FC = () => {
             <div 
               className={`absolute right-0 top-0 w-64 h-64 transition-all duration-500 rounded-bl-full flex items-center justify-center ${activeTriggerZone === 'floating' ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-90 translate-x-12 -translate-y-12'}`}
               style={{ 
-                background: 'radial-gradient(circle at 70% 30%, rgba(251, 113, 154, 0.45) 0%, transparent 75%)',
+                background: 'radial-gradient(circle at 70% 30%, rgba(8, 115, 255, 0.25) 0%, transparent 75%)',
                 backdropFilter: 'blur(16px)',
                 transformOrigin: 'top right'
               }}
             >
               <div className="text-center pt-4 pl-8">
-                <p className="text-rose-600 font-bold text-sm leading-tight uppercase tracking-tighter">松手开启小窗</p>
+                <p className="text-blue-600 font-bold text-sm leading-tight uppercase tracking-tighter">松手开启小窗</p>
               </div>
             </div>
           )}
 
           {activeTriggerZone === 'divider' && (
-            <div className="absolute flex items-center justify-center px-4 py-2 bg-rose-500 text-white rounded-full text-xs font-bold shadow-2xl animate-bounce whitespace-nowrap z-[210] border border-white/20" style={{ left: dragIcon.x + 20, top: dragIcon.y - 60 }}>
+            <div className="absolute flex items-center justify-center px-4 py-2 bg-[#0873FF]/25 text-blue-900 rounded-full text-xs font-bold shadow-2xl animate-bounce whitespace-nowrap z-[210] border border-blue-200/50" style={{ left: dragIcon.x + 20, top: dragIcon.y - 60 }}>
               {isFourGridFull ? '替换新任务' : (isTSplit ? '释放以开启四分屏' : '释放以开启三分屏')}
             </div>
           )}
           {hasBackgroundApp && activeTriggerZone !== 'divider' && (
             <>
-              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-r-[100%] ${activeTriggerZone === 'left' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at left, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
-                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">吸附至左侧</p>
+              <div className={`absolute left-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-r-[100%] ${activeTriggerZone === 'left' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at left, rgba(8, 115, 255, 0.25) 0%, transparent 80%)' }}>
+                <p className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm vertical-text">吸附至左侧</p>
               </div>
-              <div className={`absolute right-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-l-[100%] ${activeTriggerZone === 'right' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at right, rgba(251, 113, 154, 0.3) 0%, transparent 80%)' }}>
-                <p className="absolute right-4 top-1/2 -translate-y-1/2 text-rose-600 font-bold text-sm vertical-text">吸附至右侧</p>
+              <div className={`absolute right-0 top-1/2 -translate-y-1/2 h-3/5 transition-all duration-500 rounded-l-[100%] ${activeTriggerZone === 'right' ? 'w-[140px] opacity-100' : 'w-[80px] opacity-0'}`} style={{ background: 'radial-gradient(ellipse at right, rgba(8, 115, 255, 0.25) 0%, transparent 80%)' }}>
+                <p className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-600 font-bold text-sm vertical-text">吸附至右侧</p>
               </div>
             </>
           )}
@@ -899,7 +1054,42 @@ const App: React.FC = () => {
         onConfirm={() => setShowOnboarding(false)} 
       />
 
-      <CreateBoardPanel isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} />
+      <CreateBoardPanel 
+        isOpen={isCreatorOpen} 
+        onClose={() => setIsCreatorOpen(false)} 
+        onDeploy={(data) => {
+          const newCombo: TaskCombination = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: data.title,
+            mode: data.mode,
+            color: data.color,
+            apps: data.apps.map((type, i) => {
+              let state: WindowState = 'maximized';
+              if (data.mode === 'board') {
+                if (data.apps.length === 2) state = i === 0 ? 'split-left' : 'split-right';
+                else if (data.apps.length === 3) {
+                   if (i === 0) state = 'split-left';
+                   else if (i === 1) state = 'split-right-top';
+                   else state = 'split-right-bottom';
+                }
+                else if (data.apps.length >= 4) {
+                   if (i === 0) state = 'split-left-top';
+                   else if (i === 1) state = 'split-left-bottom';
+                   else if (i === 2) state = 'split-right-top';
+                   else state = 'split-right-bottom';
+                }
+              } else {
+                // Toolrings are minimized by default in the dock/panel, or we can just save them
+                state = 'minimized';
+              }
+              return { type, state };
+            }),
+            splitRatios: data.apps.length === 3 && data.mode === 'board' ? [0.5, 0.66] : [0.5, 0.66],
+            timestamp: Date.now()
+          };
+          setSavedCombinations(prev => [...prev, newCombo]);
+        }}
+      />
       
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>
     </div>

@@ -13,31 +13,29 @@ const BrowserApp: React.FC<BrowserAppProps> = ({ state }) => {
   return (
     <div className="flex flex-col h-full bg-slate-100">
       {/* Toolbar */}
-      <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-slate-200 shrink-0">
-        <div className="flex gap-1">
-          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft size={18} /></button>
-          <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight size={18} /></button>
-          {!isSplit && <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><RotateCcw size={18} /></button>}
-        </div>
-        
-        {!isSplit && (
+      {!isSplit && (
+        <div className="flex items-center gap-4 px-4 py-3 bg-white border-b border-slate-200 shrink-0">
+          <div className="flex gap-1">
+            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronLeft size={18} /></button>
+            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><ChevronRight size={18} /></button>
+            <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><RotateCcw size={18} /></button>
+          </div>
+          
           <div className="flex-1 flex items-center bg-slate-100 rounded-xl px-4 py-1.5 border border-slate-200">
             <Lock size={12} className="text-emerald-500 mr-2" />
             <span className="text-sm text-slate-600 truncate">https://nexus-research.org/papers/spatial-memory-multitasking-2026</span>
           </div>
-        )}
 
-        {isSplit && <div className="flex-1" />}
-
-        <div className="flex gap-2">
-           <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Search size={18} /></button>
-           {!isSplit && <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Home size={18} /></button>}
+          <div className="flex gap-2">
+             <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Search size={18} /></button>
+             <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400"><Home size={18} /></button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Web Content Area */}
-      <div className="flex-1 overflow-auto bg-[#FDFDFD] m-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="max-w-3xl mx-auto py-16 px-12 md:px-20 font-serif text-slate-900 leading-relaxed">
+      <div className={`flex-1 overflow-auto bg-[#FDFDFD] ${isSplit ? 'm-0' : 'm-4 rounded-2xl border border-slate-200 shadow-sm'}`}>
+        <div className={`${isSplit ? 'w-[95%] mx-auto py-8 px-4' : 'max-w-3xl mx-auto py-16 px-12 md:px-20'} font-serif text-slate-900 leading-relaxed`}>
           {/* Header */}
           <div className="mb-12 border-b border-slate-100 pb-10">
             <h1 className="text-4xl font-extrabold tracking-tight leading-tight mb-6">

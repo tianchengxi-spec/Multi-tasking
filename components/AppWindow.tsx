@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { X, Minus, Maximize2 } from 'lucide-react';
+import { X, Minus, Maximize2, Pin, ArrowUpToLine } from 'lucide-react';
 import { motion } from 'motion/react';
 import { AppInstance, WindowState, AppType } from '../types';
 import { APP_CONFIG } from '../constants';
@@ -18,6 +18,10 @@ interface AppWindowProps {
   hasSidebarRight?: boolean;
   onDragStart?: (id: string, x: number, y: number) => void;
   isResizing?: boolean;
+  isSwapping?: boolean;
+  isSwappingOver?: boolean;
+  onTogglePin?: () => void;
+  onToggleTopmost?: () => void;
 }
 
 const AppWindow: React.FC<AppWindowProps> = ({ 
@@ -32,7 +36,11 @@ const AppWindow: React.FC<AppWindowProps> = ({
   hasSidebarLeft = false,
   hasSidebarRight = false,
   onDragStart,
-  isResizing = false
+  isResizing = false,
+  isSwapping = false,
+  isSwappingOver = false,
+  onTogglePin,
+  onToggleTopmost
 }) => {
   const config = APP_CONFIG[app.type];
   
@@ -62,8 +70,9 @@ const AppWindow: React.FC<AppWindowProps> = ({
   const style: React.CSSProperties = useMemo(() => {
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
-      zIndex: app.state === 'floating-icon' ? 2000 + app.zIndex : app.zIndex,
-      transition: isResizing ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+      zIndex: (app.isTopmost || app.isPinned) ? 10000 + app.zIndex : (app.state === 'floating-icon' ? 2000 + app.zIndex : app.zIndex),
+      transition: (isResizing || isSwapping) ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+      opacity: isSwapping ? 0.4 : 1,
     };
 
     if (app.state === 'floating' || app.state === 'floating-icon') {
@@ -183,6 +192,13 @@ const AppWindow: React.FC<AppWindowProps> = ({
       className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive && !isIconOnly ? 'ring-2 ring-blue-500/30' : ''}`}
       onClick={() => onFocus(app.id)}
     >
+      {!isSidebar && isSwappingOver && (
+        <div className="absolute inset-0 bg-white/40 border-[6px] border-white/60 z-[1000] pointer-events-none rounded-none animate-pulse flex items-center justify-center">
+           <div className="px-4 py-2 bg-white/80 backdrop-blur-md rounded-full shadow-xl border border-white/50">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-widest">放手以调换位置</span>
+           </div>
+        </div>
+      )}
       {isIconOnly ? (
         <div className="w-full h-full flex items-center justify-center p-2">
            <div className={`${config.color} w-full h-full rounded-xl shadow-lg flex items-center justify-center text-white`}>
@@ -192,9 +208,9 @@ const AppWindow: React.FC<AppWindowProps> = ({
       ) : (
         <>
           <div 
-            className={`min-h-[88px] pt-10 flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
+            className={`${isSidebar ? 'min-h-[48px] pt-0' : (app.state === 'floating' || app.state.startsWith('split-') ? (app.state.includes('bottom') || app.state === 'floating' ? 'min-h-[40px] pt-0' : 'min-h-[64px] pt-6') : 'min-h-[88px] pt-10')} flex items-center ${isSidebar ? 'justify-center px-0' : 'justify-between px-4'} border-b border-slate-100 bg-slate-50/50 cursor-grab active:cursor-grabbing shrink-0`}
             onPointerDown={(e) => {
-              if (app.state === 'floating' && onDragStart) {
+              if (onDragStart) {
                 onDragStart(app.id, e.clientX, e.clientY);
               }
             }}
@@ -204,6 +220,24 @@ const AppWindow: React.FC<AppWindowProps> = ({
                 {React.cloneElement(config.icon as React.ReactElement<any>, { size: isSidebar ? 24 : 16 })}
               </div>
               {!isSidebar && <span className="font-semibold text-slate-700 text-sm truncate max-w-[120px]">{app.title}</span>}
+              {!isSidebar && app.state === 'floating' && (
+                <div className="flex items-center gap-1.5 ml-1">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onTogglePin?.(); }} 
+                    className={`p-1 rounded-md transition-all ${app.isPinned ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-200'}`}
+                    title="钉起 (固定位置)"
+                  >
+                    <Pin size={12} className={app.isPinned ? 'fill-current' : ''} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onToggleTopmost?.(); }} 
+                    className={`p-1 rounded-md transition-all ${app.isTopmost ? 'bg-amber-100 text-amber-600' : 'text-slate-400 hover:bg-slate-200'}`}
+                    title="挂起 (置顶显示)"
+                  >
+                    <ArrowUpToLine size={12} />
+                  </button>
+                </div>
+              )}
             </div>
             {!isSidebar && (
               <div className="flex items-center gap-1">

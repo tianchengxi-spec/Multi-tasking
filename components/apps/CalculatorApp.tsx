@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Delete } from 'lucide-react';
 
-const CalculatorApp: React.FC = () => {
+interface CalculatorAppProps {
+  state?: string;
+}
+
+const CalculatorApp: React.FC<CalculatorAppProps> = ({ state }) => {
   const [display, setDisplay] = useState('0');
+  
+  const isSmall = state === 'floating' || (state && state.includes('split-') && (state.includes('top') || state.includes('bottom')));
   const [prevValue, setPrevValue] = useState<string | null>(null);
   const [operator, setOperator] = useState<string | null>(null);
   const [waitingForOperand, setWaitingForOperand] = useState(false);
@@ -69,7 +75,7 @@ const CalculatorApp: React.FC = () => {
     return (
       <button 
         onClick={onClick}
-        className={`h-16 rounded-2xl text-xl font-semibold transition-all active:scale-95 flex items-center justify-center ${variants[variant]} ${className}`}
+        className={`${isSmall ? 'h-11 rounded-xl text-lg' : 'h-16 rounded-2xl text-xl'} font-semibold transition-all active:scale-95 flex items-center justify-center ${variants[variant]} ${className}`}
       >
         {children}
       </button>
@@ -77,21 +83,21 @@ const CalculatorApp: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white px-6 pb-6 pt-4 select-none">
+    <div className={`flex flex-col h-full bg-white ${isSmall ? 'px-4 pb-4 pt-2' : 'px-6 pb-6 pt-4'} select-none transition-all`}>
       {/* Display */}
-      <div className="h-32 flex flex-col items-end justify-end pb-4">
+      <div className={`${isSmall ? 'h-24' : 'h-32'} flex flex-col items-end justify-end pb-4 transition-all`}>
         {prevValue && (
           <div className="text-slate-400 text-sm font-medium mb-1">
             {prevValue} {operator}
           </div>
         )}
-        <div className="text-5xl font-bold text-slate-900 tracking-tight overflow-hidden text-right w-full">
+        <div className={`${isSmall ? 'text-4xl' : 'text-5xl'} font-bold text-slate-900 tracking-tight overflow-hidden text-right w-full transition-all`}>
           {display}
         </div>
       </div>
 
       {/* Keypad */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className={`grid grid-cols-4 ${isSmall ? 'gap-2' : 'gap-3'} transition-all`}>
         <Button onClick={handleClear} variant="function">AC</Button>
         <Button onClick={() => setDisplay(String(parseFloat(display) * -1))} variant="function">+/-</Button>
         <Button onClick={() => setDisplay(String(parseFloat(display) / 100))} variant="function">%</Button>

@@ -11,7 +11,7 @@ interface GeminiAppProps {
 const GeminiApp: React.FC<GeminiAppProps> = ({ apps }) => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'bot'; text: string }[]>([
-    { role: 'bot', text: "Hello! I'm Nexus AI. I can see you have several apps open. How can I assist your workflow today?" }
+    { role: 'bot', text: "你好！我是 Nexus AI。我看到你打开了几个应用。今天我可以如何协助你的工作流程？" }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -30,7 +30,7 @@ const GeminiApp: React.FC<GeminiAppProps> = ({ apps }) => {
     setMessages(prev => [...prev, { role: 'user', text: userText }]);
     setIsLoading(true);
 
-    const context = `The user has ${apps.length} apps open: ${apps.map(a => a.title).join(', ')}. Current layout focus: ${apps.find(a => a.zIndex === Math.max(...apps.map(x => x.zIndex)))?.title || 'None'}.`;
+    const context = `用户打开了 ${apps.length} 个应用：${apps.map(a => a.title).join(', ')}。当前布局焦点：${apps.find(a => a.zIndex === Math.max(...apps.map(x => x.zIndex)))?.title || '无'}。`;
     
     const response = await getGeminiResponse(userText, context);
     
@@ -90,7 +90,7 @@ const GeminiApp: React.FC<GeminiAppProps> = ({ apps }) => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="Ask about your apps or workflow..."
+              placeholder="询问关于您的应用或工作流程的问题..."
               className="flex-1 bg-slate-100 border-none rounded-2xl px-5 py-3 text-sm focus:ring-2 focus:ring-purple-400 outline-none transition-all pr-12"
             />
             <button 
@@ -103,10 +103,10 @@ const GeminiApp: React.FC<GeminiAppProps> = ({ apps }) => {
           </div>
           <div className="mt-3 flex gap-4 overflow-x-auto pb-1 no-scrollbar">
             <button className="whitespace-nowrap flex items-center gap-2 text-[10px] font-bold text-slate-500 hover:text-purple-600 transition-colors uppercase tracking-widest bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg">
-              <Layout size={12} /> Tile Windows
+              <Layout size={12} /> 排列窗口
             </button>
             <button className="whitespace-nowrap flex items-center gap-2 text-[10px] font-bold text-slate-500 hover:text-purple-600 transition-colors uppercase tracking-widest bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg">
-              <Terminal size={12} /> System Status
+              <Terminal size={12} /> 系统状态
             </button>
           </div>
         </div>

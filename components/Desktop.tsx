@@ -8,11 +8,13 @@ import BrowserApp from './apps/BrowserApp';
 import FilesApp from './apps/FilesApp';
 import CalendarApp from './apps/CalendarApp';
 import CalculatorApp from './apps/CalculatorApp';
+import SettingsApp from './apps/SettingsApp';
+import DictionaryApp from './apps/DictionaryApp';
 import ScheduleWidget from './ScheduleWidget';
 import DeadlineWidget from './DeadlineWidget';
 import DesktopClock from './DesktopClock';
 import { APP_CONFIG } from '../constants';
-import { Cloud, Video, FileVideo, Search, MoreVertical, Folder, Grid, List as ListIcon, Play } from 'lucide-react';
+import { Cloud, Video, FileVideo, Search, MoreVertical, Folder, Grid, List as ListIcon, Play, PenTool, Plus } from 'lucide-react';
 import CreateBoardPanel from './CreateBoardPanel';
 
 interface DesktopProps {
@@ -24,11 +26,15 @@ interface DesktopProps {
   onFocusApp: (id: string) => void;
   onOpenApp: (type: AppType) => void;
   splitRatios: [number, number];
+  swappingAppId?: string | null;
+  swappingOverId?: string | null;
   onDragAppStart?: (id: string, x: number, y: number) => void;
   onClickWallpaper?: () => void;
   isResizing?: boolean;
   onStartStudy?: () => void;
   onOpenCreator?: () => void;
+  onTogglePin?: (id: string) => void;
+  onToggleTopmost?: (id: string) => void;
 }
 
 const Desktop: React.FC<DesktopProps> = ({ 
@@ -39,11 +45,15 @@ const Desktop: React.FC<DesktopProps> = ({
   onFocusApp,
   onOpenApp,
   splitRatios,
+  swappingAppId = null,
+  swappingOverId = null,
   onDragAppStart,
   onClickWallpaper,
   isResizing = false,
   onStartStudy,
-  onOpenCreator
+  onOpenCreator,
+  onTogglePin,
+  onToggleTopmost
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
@@ -58,29 +68,17 @@ const Desktop: React.FC<DesktopProps> = ({
 
   const renderAppContent = (app: AppInstance) => {
     switch (app.type) {
-      case AppType.NOTES: return <NotesApp state={app.state} />;
+      case AppType.NOTES: return <NotesApp state={app.state} initialNoteId={app.initialData?.noteId} />;
       case AppType.BROWSER: return <BrowserApp state={app.state} />;
       case AppType.AI_ASSISTANT: return <GeminiApp apps={apps} />;
-      case AppType.FILES: return <FilesApp />;
-      case AppType.CALENDAR: return <CalendarApp />;
-      case AppType.CALCULATOR: return <CalculatorApp />;
+      case AppType.FILES: return <FilesApp state={app.state} />;
+      case AppType.CALENDAR: return <CalendarApp state={app.state} />;
+      case AppType.CALCULATOR: return <CalculatorApp state={app.state} />;
+      case AppType.SETTINGS: return <SettingsApp />;
+      case AppType.DICTIONARY: return <DictionaryApp state={app.state} />;
       case AppType.WHITEBOARD: return (
         <div className="flex flex-col h-full bg-slate-50 overflow-hidden relative">
           <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-          <div className="h-12 border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 flex items-center justify-between shrink-0 z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <PenTool size={16} />
-              </div>
-              <span className="text-sm font-bold text-slate-800 tracking-tight">无界白板</span>
-            </div>
-            <div className="flex gap-2">
-              <div className="h-8 px-3 rounded-full bg-slate-100 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">协同模式</span>
-              </div>
-            </div>
-          </div>
           <div className="flex-1 flex items-center justify-center relative">
              <div className="text-center">
                 <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6 border border-slate-100">
@@ -92,35 +90,39 @@ const Desktop: React.FC<DesktopProps> = ({
           </div>
         </div>
       );
-      case AppType.CLOUD_DRIVE: return (
-        <div className="flex flex-col h-full bg-slate-50">
-          <div className="h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-indigo-600 font-bold">
-                <Cloud size={18} />
-                <span className="text-sm">Nexus Drive</span>
+      case AppType.CLOUD_DRIVE: {
+        const isFourGrid = app.state && (app.state.includes('top') || app.state.includes('bottom'));
+        return (
+          <div className="flex flex-col h-full bg-slate-50">
+            {!isFourGrid && (
+              <div className="h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-indigo-600 font-bold">
+                    <Cloud size={18} />
+                    <span className="text-sm">Nexus Drive</span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200" />
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                    <Folder size={12} />
+                    <span>我的文件</span>
+                    <span className="text-slate-300">/</span>
+                    <span className="text-slate-800">英语学习</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input className="bg-slate-100 rounded-full py-1.5 pl-9 pr-4 text-[11px] w-48 focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="搜索文件..." />
+                  </div>
+                  <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                    <Grid size={16} className="text-slate-500" />
+                  </button>
+                </div>
               </div>
-              <div className="h-4 w-px bg-slate-200" />
-              <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
-                <Folder size={12} />
-                <span>我的文件</span>
-                <span className="text-slate-300">/</span>
-                <span className="text-slate-800">英语学习</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input className="bg-slate-100 rounded-full py-1.5 pl-9 pr-4 text-[11px] w-48 focus:outline-none focus:ring-1 focus:ring-indigo-400" placeholder="搜索文件..." />
-              </div>
-              <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-                <Grid size={16} className="text-slate-500" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex-1 p-6 overflow-y-auto">
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            )}
+            
+            <div className={`flex-1 ${isFourGrid ? 'p-4' : 'p-6'} overflow-y-auto`}>
+              <div className={`grid ${isFourGrid ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'} gap-4`}>
               <div className="group bg-white border border-slate-200 rounded-2xl p-4 transition-all hover:shadow-xl hover:shadow-indigo-500/5 hover:-translate-y-1 cursor-pointer">
                 <div className="aspect-video bg-indigo-50 rounded-xl mb-4 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-100/50 transition-colors relative overflow-hidden">
                    <FileVideo size={32} />
@@ -154,6 +156,7 @@ const Desktop: React.FC<DesktopProps> = ({
           </div>
         </div>
       );
+    }
       default: return <div className="p-8 text-slate-400 italic text-sm">此应用目前正处于原型开发阶段。</div>;
     }
   };
@@ -195,6 +198,10 @@ const Desktop: React.FC<DesktopProps> = ({
           hasSidebarRight={hasSidebarRight}
           onDragStart={onDragAppStart}
           isResizing={isResizing}
+          isSwapping={swappingAppId === app.id}
+          isSwappingOver={swappingOverId === app.id}
+          onTogglePin={() => onTogglePin?.(app.id)}
+          onToggleTopmost={() => onToggleTopmost?.(app.id)}
         >
           {renderAppContent(app)}
         </AppWindow>

@@ -5,28 +5,25 @@ import { WindowState } from '../../types';
 
 interface NotesAppProps {
   state?: WindowState;
+  initialNoteId?: string;
 }
 
-const NotesApp: React.FC<NotesAppProps> = ({ state }) => {
-  const [selectedNoteId, setSelectedNoteId] = useState('1');
+const NotesApp: React.FC<NotesAppProps> = ({ state, initialNoteId }) => {
+  const [selectedNoteId, setSelectedNoteId] = useState(initialNoteId || '1');
   const [notes] = useState([
     { 
       id: '1', 
-      title: '交互设计论文', 
+      title: '交互设计', 
       content: (
-        <>
-          <p>本研究探讨了大幅面平板电脑上<strong>触觉反馈</strong>与<strong>手势多任务处理</strong>的交集。</p>
-          <p>iPadOS和Android平板电脑目前的局限性通常源于“手机优先”的遗产。Nexus OS旨在通过将屏幕视为一个流动的画布来打破这一点，在这个画布上，应用程序可以根据用户流程而不是严格的网格进行重新排列和调整大小。</p>
-          <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 italic text-xs border-l-4 border-l-blue-400">
-            “屏幕不是容器，而是工作空间。” —— 原型原则 #1
-          </div>
-          <p>初步用户研究的主要观察结果 (n=12):</p>
+        <div className="space-y-4">
+          <p>核心原则：</p>
           <ul className="list-disc pl-5 space-y-2">
-            <li>用户在进行研究时更喜欢水平拆分而不是垂直拆分。</li>
-            <li>应用间的拖放是请求最多的功能。</li>
-            <li>视觉深度（阴影、层级）有助于减轻认知负荷。</li>
+            <li><strong>费茨法则：</strong>目标越小，距离越远，到达目标所需的时间就越长。</li>
+            <li><strong>希克法则：</strong>增加选择的数量会指数级增加决策所需的时间。</li>
+            <li><strong>尼尔森原则：</strong>系统的状态可见性、环境贴切、用户控制权和自由度。</li>
+            <li><strong>奥卡姆剃刀：</strong>如无必要，勿增实体。保持界面的极简与高效。</li>
           </ul>
-        </>
+        </div>
       ),
       tags: ['研究', '论文'],
       date: '2分钟前' 
@@ -88,7 +85,7 @@ const NotesApp: React.FC<NotesAppProps> = ({ state }) => {
       {!isSplit && (
         <div className="w-64 border-r border-slate-100 flex flex-col shrink-0">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h2 className="font-bold text-slate-800 text-sm">我的备忘录</h2>
+            <h2 className="font-bold text-slate-800 text-sm">我的笔记</h2>
             <button className="p-1.5 hover:bg-slate-100 rounded-lg text-blue-600 transition-colors">
               <Plus size={18} />
             </button>

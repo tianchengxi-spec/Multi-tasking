@@ -12,8 +12,8 @@ const DesktopClock: React.FC = () => {
   const hours = time.getHours().toString().padStart(2, '0');
   const minutes = time.getMinutes().toString().padStart(2, '0');
   
-  const dayName = time.toLocaleDateString('en-US', { weekday: 'short' });
-  const dateStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const dayName = time.toLocaleDateString('zh-CN', { weekday: 'short' });
+  const dateStr = time.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 
   return (
     <div className="absolute top-12 left-12 flex flex-col items-start pointer-events-none select-none z-0">

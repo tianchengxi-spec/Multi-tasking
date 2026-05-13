@@ -12,7 +12,8 @@ import {
   Battery, 
   SignalHigh,
   Cloud,
-  PenTool
+  PenTool,
+  Book
 } from 'lucide-react';
 import { AppType } from './types';
 
@@ -54,6 +55,7 @@ export const APP_CONFIG = {
   [AppType.CALCULATOR]: { icon: <Calculator size={30} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.CLOUD_DRIVE]: { icon: <Cloud size={24} />, color: 'bg-indigo-100 text-indigo-600', border: 'border-indigo-200' },
   [AppType.WHITEBOARD]: { icon: <PenTool size={24} />, color: 'bg-purple-100 text-purple-600', border: 'border-purple-200' },
+  [AppType.DICTIONARY]: { icon: <Book size={24} />, color: 'bg-orange-100 text-orange-600', border: 'border-orange-200' },
 };
 
 export const SYSTEM_ICONS = {

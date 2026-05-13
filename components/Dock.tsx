@@ -102,13 +102,28 @@ const TaskCombinationItem: React.FC<TaskCombinationItemProps> = ({ combo, onRest
       } : { type: 'spring', stiffness: 500, damping: 30 }}
       className={`relative group transition-shadow duration-300 touch-none select-none outline-none z-[10] ${isAwakened ? 'z-[200]' : ''}`}
     >
-       <div className={`w-14 h-14 bg-white/40 backdrop-blur-md rounded-[1.25rem] border ${isAwakened ? 'border-rose-400' : 'border-white/40'} overflow-hidden relative p-1.5 shadow-sm group-hover:shadow-xl transition-all`}>
-          <div className={`w-full h-full grid ${combo.apps.length > 2 ? 'grid-cols-2 grid-rows-2' : (combo.apps.length === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1')} gap-0.5 rounded-lg overflow-hidden`}>
-             {combo.apps.map((app, i) => (
-               <div key={i} className={`flex items-center justify-center ${APP_CONFIG[app.type].color} bg-opacity-40`}>
-                  {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: combo.apps.length > 2 ? 12 : 20 })}
-               </div>
-             ))}
+       <div className={`w-14 h-14 bg-white/40 backdrop-blur-md rounded-[1.25rem] border ${isAwakened ? 'border-rose-400' : (combo.color ? `border-${combo.color}-400/50` : 'border-white/40')} overflow-hidden relative p-1.5 shadow-sm group-hover:shadow-xl transition-all`}>
+          <div className={`w-full h-full ${combo.mode === 'toolring' ? 'rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center' : `grid ${combo.apps.length > 2 ? 'grid-cols-2 grid-rows-2' : (combo.apps.length === 2 ? 'grid-cols-2 grid-rows-1' : 'grid-cols-1')} gap-0.5 rounded-lg overflow-hidden`}`}>
+             {combo.mode === 'toolring' ? (
+                <div className="relative w-full h-full flex items-center justify-center">
+                  {combo.apps.slice(0, 4).map((app, i) => {
+                    const angle = (i / Math.min(4, combo.apps.length)) * Math.PI * 2;
+                    const x = Math.cos(angle) * 12;
+                    const y = Math.sin(angle) * 12;
+                    return (
+                      <div key={i} className={`absolute ${APP_CONFIG[app.type].color} bg-opacity-80 rounded-full w-5 h-5 flex items-center justify-center border border-white shadow-sm`} style={{ transform: `translate(${x}px, ${y}px)` }}>
+                         {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: 10 })}
+                      </div>
+                    );
+                  })}
+                </div>
+             ) : (
+               combo.apps.map((app, i) => (
+                 <div key={i} className={`flex items-center justify-center ${APP_CONFIG[app.type].color} bg-opacity-40`}>
+                    {React.cloneElement(APP_CONFIG[app.type].icon as React.ReactElement, { size: combo.apps.length > 2 ? 12 : 20 })}
+                 </div>
+               ))
+             )}
           </div>
           {isAwakened && dragPos.y < -60 && (
             <div className="absolute inset-0 bg-rose-500/20 flex items-center justify-center animate-pulse">
@@ -117,8 +132,8 @@ const TaskCombinationItem: React.FC<TaskCombinationItemProps> = ({ combo, onRest
           )}
        </div>
        {!isAwakened && (
-         <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10 whitespace-nowrap">
-            任务组合
+         <div className="absolute -top-14 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none uppercase tracking-widest backdrop-blur-md border border-white/10 whitespace-nowrap z-50">
+            {combo.name || (combo.mode === 'toolring' ? '轻量工具环' : '任务组合')}
          </div>
        )}
     </motion.div>
@@ -184,6 +199,7 @@ const Dock: React.FC<DockProps> = ({
     AppType.CALENDAR,
     AppType.CALCULATOR,
     AppType.WHITEBOARD,
+    AppType.DICTIONARY,
     AppType.CLOUD_DRIVE,
     AppType.SETTINGS
   ];
@@ -335,7 +351,7 @@ const Dock: React.FC<DockProps> = ({
         
         <div className="w-[1px] h-10 bg-slate-300/40 mx-1 self-center" />
         
-        {savedCombinations.map((combo) => (
+        {savedCombinations.filter(c => c.mode !== 'toolring').map((combo) => (
           <TaskCombinationItem 
             key={combo.id}
             combo={combo}

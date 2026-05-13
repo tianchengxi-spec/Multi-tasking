@@ -15,11 +15,11 @@ const SystemBar: React.FC<SystemBarProps> = ({ isDark = false }) => {
   }, []);
 
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    return date.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
   };
 
   const textColor = isDark ? 'text-slate-900' : 'text-white';
