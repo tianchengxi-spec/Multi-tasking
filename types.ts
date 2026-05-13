@@ -8,7 +8,8 @@ export enum AppType {
   SETTINGS = 'Settings',
   XIAOHONGSHU = '小红书',
   CALCULATOR = '计算器',
-  CLOUD_DRIVE = '网盘'
+  CLOUD_DRIVE = '网盘',
+  WHITEBOARD = '无界白板'
 }
 
 export type WindowState = 'floating' | 'floating-icon' | 'split-left' | 'split-middle' | 'split-right' | 'split-left-top' | 'split-left-bottom' | 'split-right-top' | 'split-right-bottom' | 'maximized' | 'minimized' | 'split-sidebar-left' | 'split-sidebar-right';

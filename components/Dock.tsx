@@ -183,6 +183,7 @@ const Dock: React.FC<DockProps> = ({
     AppType.AI_ASSISTANT,
     AppType.CALENDAR,
     AppType.CALCULATOR,
+    AppType.WHITEBOARD,
     AppType.CLOUD_DRIVE,
     AppType.SETTINGS
   ];

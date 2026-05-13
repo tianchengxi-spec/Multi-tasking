@@ -28,6 +28,7 @@ interface DesktopProps {
   onClickWallpaper?: () => void;
   isResizing?: boolean;
   onStartStudy?: () => void;
+  onOpenCreator?: () => void;
 }
 
 const Desktop: React.FC<DesktopProps> = ({ 
@@ -41,50 +42,18 @@ const Desktop: React.FC<DesktopProps> = ({
   onDragAppStart,
   onClickWallpaper,
   isResizing = false,
-  onStartStudy
+  onStartStudy,
+  onOpenCreator
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
   const hasSidebarRight = useMemo(() => apps.some(a => a.state === 'split-sidebar-right'), [apps]);
 
-  const [isCreatorOpen, setIsCreatorOpen] = React.useState(false);
-  const [longPressActive, setLongPressActive] = React.useState(false);
-  const startPos = React.useRef<{ x: number, y: number } | null>(null);
-  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    // Only detect on the wallpaper itself
-    if (e.target !== e.currentTarget) return;
-    
-    startPos.current = { x: e.clientX, y: e.clientY };
-    timerRef.current = setTimeout(() => {
-      setLongPressActive(true);
-      timerRef.current = null;
-    }, 3000); // 3 seconds requirement
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!startPos.current) return;
-
-    if (longPressActive) {
-      const diffX = e.clientX - startPos.current.x;
-      // Drag right at least 50px to trigger
-      if (diffX > 50) {
-        setIsCreatorOpen(true);
-        resetGesture();
-      }
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    // 仅在点击壁纸本身且在屏幕左侧 150px 范围内时触发
+    if (e.target === e.currentTarget && e.clientX < 150) {
+      onOpenCreator?.();
     }
-  };
-
-  const resetGesture = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = null;
-    startPos.current = null;
-    setLongPressActive(false);
-  };
-
-  const onPointerUp = () => {
-    resetGesture();
   };
 
   const renderAppContent = (app: AppInstance) => {
@@ -95,6 +64,34 @@ const Desktop: React.FC<DesktopProps> = ({
       case AppType.FILES: return <FilesApp />;
       case AppType.CALENDAR: return <CalendarApp />;
       case AppType.CALCULATOR: return <CalculatorApp />;
+      case AppType.WHITEBOARD: return (
+        <div className="flex flex-col h-full bg-slate-50 overflow-hidden relative">
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="h-12 border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 flex items-center justify-between shrink-0 z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-purple-500 text-white flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <PenTool size={16} />
+              </div>
+              <span className="text-sm font-bold text-slate-800 tracking-tight">无界白板</span>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-8 px-3 rounded-full bg-slate-100 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">协同模式</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center justify-center relative">
+             <div className="text-center">
+                <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                   <Plus className="text-slate-300" size={32} />
+                </div>
+                <h3 className="text-slate-800 font-black text-lg mb-2">开始您的创意之旅</h3>
+                <p className="text-slate-400 text-sm font-medium">双击此处或拖入素材以初始化画布</p>
+             </div>
+          </div>
+        </div>
+      );
       case AppType.CLOUD_DRIVE: return (
         <div className="flex flex-col h-full bg-slate-50">
           <div className="h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between shrink-0">
@@ -164,17 +161,13 @@ const Desktop: React.FC<DesktopProps> = ({
   return (
     <div 
       className="relative flex-1 overflow-hidden cursor-default"
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
+      onDoubleClick={handleDoubleClick}
       onClick={(e) => {
         if (e.target === e.currentTarget && onClickWallpaper) {
           onClickWallpaper();
         }
       }}
     >
-      <CreateBoardPanel isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} />
       <DesktopClock />
       
       <div className="absolute top-40 left-12 w-[340px] z-0">

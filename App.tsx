@@ -18,12 +18,14 @@ interface DragIconState {
 }
 
 import OnboardingModal from './components/OnboardingModal';
+import CreateBoardPanel from './components/CreateBoardPanel';
 
 const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
   const [activeAppId, setActiveAppId] = useState<string | null>(null);
   const [zIndexCounter, setZIndexCounter] = useState(10);
   const [isDockVisible, setIsDockVisible] = useState(true);
+  const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const touchStartY = useRef<number | null>(null);
@@ -685,6 +687,7 @@ const App: React.FC = () => {
             }
           }}
           onStartStudy={startStudy}
+          onOpenCreator={() => setIsCreatorOpen(true)}
         />
       </div>
 
@@ -895,6 +898,8 @@ const App: React.FC = () => {
         onClose={() => setShowOnboarding(false)} 
         onConfirm={() => setShowOnboarding(false)} 
       />
+
+      <CreateBoardPanel isOpen={isCreatorOpen} onClose={() => setIsCreatorOpen(false)} />
       
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>
     </div>

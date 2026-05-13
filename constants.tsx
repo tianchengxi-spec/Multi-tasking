@@ -11,7 +11,8 @@ import {
   Wifi, 
   Battery, 
   SignalHigh,
-  Cloud
+  Cloud,
+  PenTool
 } from 'lucide-react';
 import { AppType } from './types';
 
@@ -52,6 +53,7 @@ export const APP_CONFIG = {
   [AppType.XIAOHONGSHU]: { icon: <XiaohongshuIcon />, color: 'bg-[#FF2442]', border: 'border-red-400/10' },
   [AppType.CALCULATOR]: { icon: <Calculator size={30} />, color: 'bg-slate-100 text-slate-600', border: 'border-slate-200' },
   [AppType.CLOUD_DRIVE]: { icon: <Cloud size={24} />, color: 'bg-indigo-100 text-indigo-600', border: 'border-indigo-200' },
+  [AppType.WHITEBOARD]: { icon: <PenTool size={24} />, color: 'bg-purple-100 text-purple-600', border: 'border-purple-200' },
 };
 
 export const SYSTEM_ICONS = {
