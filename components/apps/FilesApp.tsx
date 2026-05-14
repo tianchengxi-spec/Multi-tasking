@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Grid, List, ChevronRight, HardDrive, Cloud, Clock, Star, Trash2 } from 'lucide-react';
+import { Grid, List, ChevronRight, HardDrive, Cloud, Clock, Star, Trash2, Search, Folder, LayoutGrid } from 'lucide-react';
 
 interface FilesAppProps {
   state?: any;
@@ -9,19 +9,20 @@ interface FilesAppProps {
 const FilesApp: React.FC<FilesAppProps> = ({ state }) => {
   const isSplit = state && state.startsWith('split-');
   const isFourGrid = state && (state.includes('top') || state.includes('bottom'));
+  const isNarrow = state === 'floating' || (state && (state.includes('left') || state.includes('right')));
 
   const folders = [
-    { name: '文档', items: '124 个文件', color: 'bg-blue-100 text-blue-600' },
-    { name: '毕业论文项目', items: '45 个文件', color: 'bg-amber-100 text-amber-600' },
-    { name: '下载', items: '12 个文件', color: 'bg-emerald-100 text-emerald-600' },
-    { name: '系统日志', items: '8 个文件', color: 'bg-slate-100 text-slate-600' },
+    { name: '精听素材库', items: '12 个文件', color: 'bg-indigo-100 text-indigo-600' },
+    { name: '阅读真题', items: '45 个文件', color: 'bg-amber-100 text-amber-600' },
+    { name: '口语模考', items: '8 个文件', color: 'bg-rose-100 text-rose-600' },
+    { name: '听力脚本', items: '124 个文件', color: 'bg-slate-100 text-slate-600' },
   ];
 
   const files = [
-    { name: '设计规范_v2.pdf', size: '2.4 MB', type: 'PDF' },
-    { name: '原型演示.mp4', size: '124 MB', type: '视频' },
-    { name: '最终图标集.zip', size: '4.1 MB', type: '压缩包' },
-    { name: '参考清单.xlsx', size: '890 KB', type: '表格' },
+    { name: '六级真题解析.mp4', size: '120.4 MB', type: 'VIDEO', time: '刚刚' },
+    { name: 'CET6_Vocabulary.pdf', size: '4.2 MB', type: 'PDF', time: '2小时前' },
+    { name: '听力训练_01.mp3', size: '12.8 MB', type: 'AUDIO', time: '昨天' },
+    { name: '考研英语长难句.docx', size: '890 KB', type: 'DOC', time: '2天前' },
   ];
 
   return (
@@ -54,14 +55,53 @@ const FilesApp: React.FC<FilesAppProps> = ({ state }) => {
 
       {/* Grid Content */}
       <div className="flex-1 p-4 md:p-6 overflow-auto">
-        {!isFourGrid && (
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              Nexus 存储 <ChevronRight size={14} /> 文档
+        {!isSplit && (
+          <div className="flex items-center justify-between gap-4 mb-8 sticky top-0 bg-white z-10 py-1 transition-all">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Brand Logo - Hide when narrow */}
+              {!isNarrow && !isFourGrid && (
+                <>
+                  <div className="flex items-center gap-2 text-blue-600 shrink-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                      <Cloud size={18} />
+                    </div>
+                    <div className="flex flex-col -space-y-1">
+                      <span className="text-[10px] font-black uppercase tracking-tighter opacity-70">Nexus</span>
+                      <span className="text-sm font-black tracking-tight">Drive</span>
+                    </div>
+                  </div>
+                  <div className="w-[1px] h-6 bg-slate-100 mx-1" />
+                </>
+              )}
+
+              {/* Breadcrumbs - Hide when extreme narrow */}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400 shrink-0">
+                  <Folder size={16} />
+                </div>
+                <div className="flex items-center text-xs font-bold text-slate-400 truncate overflow-hidden">
+                  {!isNarrow && <span className="hover:text-slate-600 cursor-pointer">我的文件</span>}
+                  {!isNarrow && <ChevronRight size={14} className="mx-0.5 opacity-50 shrink-0" />}
+                  <span className="text-slate-800 truncate">英语学习</span>
+                </div>
+              </div>
             </div>
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              <button className="p-1.5 bg-white shadow-sm rounded-md text-slate-600"><Grid size={16} /></button>
-              <button className="p-1.5 text-slate-400 hover:text-slate-600"><List size={16} /></button>
+
+            <div className="flex items-center gap-2 flex-1 justify-end max-w-xl">
+              {/* Search Bar - Responsive width */}
+              <div className={`relative group ${isNarrow ? 'w-full max-w-[40px] md:max-w-[200px]' : 'w-full max-w-[320px]'}`}>
+                <Search size={isNarrow ? 18 : 14} className={`absolute ${isNarrow ? 'left-1/2 -translate-x-1/2' : 'left-3'} top-1/2 -translate-y-1/2 text-slate-400`} />
+                <input 
+                  type="text" 
+                  placeholder={isNarrow ? "" : "搜索文件..."}
+                  className={`w-full bg-slate-100/50 border border-transparent focus:border-blue-200 focus:bg-white rounded-xl ${isNarrow ? 'py-4 opacity-0 md:opacity-100 md:py-2 md:pl-9 md:pr-4' : 'py-2 pl-9 pr-4'} text-xs outline-none transition-all placeholder:text-slate-400`}
+                />
+              </div>
+              
+              <button className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shrink-0">
+                <div className="p-1.5 bg-white shadow-sm rounded-lg text-blue-600"><LayoutGrid size={16} /></div>
+                {!isNarrow && <div className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><List size={16} /></div>}
+              </button>
             </div>
           </div>
         )}
@@ -91,8 +131,8 @@ const FilesApp: React.FC<FilesAppProps> = ({ state }) => {
                     <Grid size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-slate-700">{file.name}</h4>
-                    <span className="text-xs text-slate-400">{file.type} • {file.size}</span>
+                    <h4 className="text-sm font-bold text-slate-700">{file.name}</h4>
+                    <span className="text-[10px] font-medium text-slate-400 uppercase tracking-tighter">{file.type} • {file.size} • {file.time}</span>
                   </div>
                 </div>
                 <button className="p-2 text-slate-300 hover:text-slate-600"><Star size={18} /></button>

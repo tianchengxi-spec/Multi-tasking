@@ -21,6 +21,7 @@ import OnboardingModal from './components/OnboardingModal';
 import CreateBoardPanel from './components/CreateBoardPanel';
 import ControlCenter from './components/ControlCenter';
 import ToolRingController from './components/ToolRingController';
+import TaskSwitcher from './components/TaskSwitcher';
 
 const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
@@ -28,6 +29,7 @@ const App: React.FC = () => {
   const [zIndexCounter, setZIndexCounter] = useState(10);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+  const [isTaskSwitcherOpen, setIsTaskSwitcherOpen] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -827,6 +829,81 @@ const App: React.FC = () => {
         }}
         onOpenSingleApp={(type) => openApp(type, 'floating')}
       />
+
+      <TaskSwitcher 
+        isOpen={isTaskSwitcherOpen}
+        onClose={() => setIsTaskSwitcherOpen(false)}
+        combinations={savedCombinations}
+        currentApps={apps.filter(a => a.state !== 'minimized' && a.state !== 'floating-icon')}
+        onRestore={(combo) => {
+          setApps(prev => {
+            const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
+            const newApps = [...minimized];
+            combo.apps.forEach((appData, index) => {
+              const existingIdx = newApps.findIndex(a => a.type === appData.type);
+              if (existingIdx !== -1) {
+                newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state || 'maximized' as WindowState, zIndex: zIndexCounter + 10 + index };
+              } else {
+                const newId = Math.random().toString(36).substr(2, 9);
+                newApps.push({
+                  id: newId,
+                  type: appData.type,
+                  title: appData.type,
+                  state: appData.state || 'maximized' as WindowState,
+                  zIndex: zIndexCounter + 10 + index,
+                  position: { x: 0, y: 0 },
+                  size: { width: '100%', height: '100%' }
+                });
+              }
+            });
+            return newApps;
+          });
+          setZIndexCounter(prev => prev + 20);
+          setIsTaskSwitcherOpen(false);
+        }}
+        onClearTasks={() => {
+          setApps(prev => prev.map(a => ({ ...a, state: 'minimized' as WindowState })));
+          setIsTaskSwitcherOpen(false);
+        }}
+      />
+
+      {/* Swipe Triggers for Task Switcher (Bottom Corners) */}
+      {(apps.some(a => a.state.startsWith('split-') || a.state === 'maximized')) && !isTaskSwitcherOpen && (
+        <>
+          <div 
+            className="absolute bottom-0 left-0 w-24 h-12 z-[2500] cursor-n-resize group"
+            onPointerDown={(e) => {
+              const startY = e.clientY;
+              const handleMove = (moveEvent: PointerEvent) => {
+                if (startY - moveEvent.clientY > 50) {
+                  setIsTaskSwitcherOpen(true);
+                  window.removeEventListener('pointermove', handleMove);
+                }
+              };
+              window.addEventListener('pointermove', handleMove);
+              window.addEventListener('pointerup', () => window.removeEventListener('pointermove', handleMove), { once: true });
+            }}
+          >
+            <div className="absolute bottom-1 left-4 w-8 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
+          </div>
+          <div 
+            className="absolute bottom-0 right-0 w-24 h-12 z-[2500] cursor-n-resize group"
+            onPointerDown={(e) => {
+              const startY = e.clientY;
+              const handleMove = (moveEvent: PointerEvent) => {
+                if (startY - moveEvent.clientY > 50) {
+                  setIsTaskSwitcherOpen(true);
+                  window.removeEventListener('pointermove', handleMove);
+                }
+              };
+              window.addEventListener('pointermove', handleMove);
+              window.addEventListener('pointerup', () => window.removeEventListener('pointermove', handleMove), { once: true });
+            }}
+          >
+            <div className="absolute bottom-1 right-4 w-8 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
+          </div>
+        </>
+      )}
 
       <Dock 
         openApps={apps.map(a => a.type)}
