@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Layout, Layers, Box, Target } from 'lucide-react';
+import { X, Layout, Layers, Box, Target, ChevronRight, ChevronLeft, Sparkles, LayoutGrid, MousePointer2, RefreshCw } from 'lucide-react';
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -9,11 +9,101 @@ interface OnboardingModalProps {
   onConfirm: () => void;
 }
 
+const PAGES = [
+  {
+    title: '学习任务台',
+    description: '通过学习任务台，轻松地管理和协调多个学习任务。让你在复杂的学习场景中游刃有余。',
+    icon: <Layout size={24} />,
+    color: 'from-blue-600 to-indigo-700',
+    illustration: (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/40 rounded-3xl flex items-center justify-center text-white shadow-2xl">
+          <Layout size={32} />
+        </div>
+      </div>
+    )
+  },
+  {
+    title: '学习任务台--学习看板',
+    description: '内置全能白板，支持绘制思维导图、流程图及灵感笔记，让知识在这片自由画布上生长。',
+    icon: <LayoutGrid size={24} />,
+    color: 'from-emerald-500 to-teal-700',
+    illustration: (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/40 rounded-3xl flex items-center justify-center text-white shadow-2xl">
+          <LayoutGrid size={32} />
+        </div>
+      </div>
+    )
+  },
+  {
+    title: '学习任务台--轻量工具环',
+    description: '通过独特的边缘双击触发，在侧边快速调起翻译、词典等辅助工具，不打断主学习流。',
+    icon: <MousePointer2 size={24} />,
+    color: 'from-purple-500 to-indigo-700',
+    illustration: (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="w-32 h-32 rounded-full border-[6px] border-white/20 relative">
+          <div className="absolute inset-0">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 bg-white rounded-lg shadow-lg flex items-center justify-center text-purple-600">
+              <Box size={12} />
+            </div>
+            <div className="absolute top-1/2 -right-3 -translate-y-1/2 w-6 h-6 bg-white rounded-lg shadow-lg flex items-center justify-center text-indigo-600">
+              <Target size={12} />
+            </div>
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center">
+             <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/30 flex items-center justify-center text-white">
+                <MousePointer2 size={24} />
+             </div>
+          </div>
+        </div>
+      </div>
+    )
+  },
+  {
+    title: '学习任务台--智能收束',
+    description: '通过在屏幕右侧连续点击，AI 能够智能识别当前杂乱的窗口状态，并为您一键重构最优布局。',
+    icon: <Sparkles size={24} />,
+    color: 'from-blue-500 to-blue-700',
+    illustration: (
+      <div className="absolute inset-4 flex items-center justify-center">
+        <div className="relative w-full h-full flex items-center justify-center">
+          <div className="w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/40 rounded-3xl flex items-center justify-center text-white shadow-2xl">
+             <Sparkles size={32} />
+          </div>
+          
+          {/* Scatter dots that converge - static positions */}
+          <div className="absolute top-4 right-4 w-4 h-4 bg-[#0873FF] rounded-full shadow-lg" />
+          <div className="absolute bottom-6 left-4 w-5 h-5 bg-blue-300 rounded-full shadow-lg" />
+          <div className="absolute top-8 left-10 w-3 h-3 bg-indigo-400 rounded-full shadow-lg" />
+        </div>
+      </div>
+    )
+  }
+];
+
 const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onConfirm }) => {
+  const [currentPage, setCurrentPage] = useState(0);
+
+  const handleNext = () => {
+    if (currentPage < PAGES.length - 1) {
+      setCurrentPage(currentPage + 1);
+    } else {
+      onConfirm();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentPage > 0) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6">
           {/* Backdrop */}
           <motion.div 
             initial={{ opacity: 0 }}
@@ -28,63 +118,81 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onCo
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-[320px] bg-white rounded-[1.5rem] shadow-[0_20px_40px_-5px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col items-center text-center p-6 select-none"
+            className="relative w-full max-w-[320px] bg-white rounded-[2rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col items-center text-center select-none"
           >
-            {/* Visual Header */}
-            <div className="w-full aspect-[16/10] bg-gradient-to-br from-blue-600 to-indigo-800 rounded-[1rem] mb-5 relative overflow-hidden group">
-              {/* Abstract Workbench UI Mockup */}
-              <div className="absolute inset-x-4 top-4 bottom-[-20%] bg-white rounded-t-xl shadow-xl flex flex-col overflow-hidden text-[8px]">
-                <div className="flex-1 p-2 grid grid-cols-2 grid-rows-2 gap-1.5">
-                    <div className="bg-blue-50 rounded-md border border-blue-100 animate-pulse" />
-                    <div className="bg-orange-50 rounded-md border border-orange-100 animate-pulse [animation-delay:0.2s]" />
-                    <div className="bg-purple-50 rounded-md border border-purple-100 animate-pulse [animation-delay:0.4s]" />
-                    <div className="bg-emerald-50 rounded-md border border-emerald-100 animate-pulse [animation-delay:0.6s]" />
-                </div>
+            {/* Carousel Content */}
+            <div className="w-full relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPage}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="p-6 pb-2 flex flex-col items-center"
+                >
+                  {/* Visual Header */}
+                  <div className={`w-full aspect-[16/10] bg-gradient-to-br ${PAGES[currentPage].color} rounded-[1.5rem] mb-6 relative overflow-hidden`}>
+                    {PAGES[currentPage].illustration}
+                  </div>
+
+                  <h2 className="text-xl font-black text-slate-900 mb-3 tracking-tight leading-tight px-4">
+                    {PAGES[currentPage].title}
+                  </h2>
+                  
+                  <p className="text-[12px] leading-relaxed text-slate-500 max-w-[240px] mb-6 h-12 flex items-center justify-center font-medium">
+                    {PAGES[currentPage].description}
+                  </p>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Navigation Controls */}
+            <div className="w-full px-6 pb-8 flex flex-col items-center gap-6">
+              {/* Pagination Dots */}
+              <div className="flex gap-2">
+                {PAGES.map((_, i) => (
+                  <motion.div 
+                    key={i}
+                    animate={{ 
+                      width: i === currentPage ? 16 : 6,
+                      backgroundColor: i === currentPage ? '#0873FF' : '#E2E8F0'
+                    }}
+                    className="h-1.5 rounded-full"
+                  />
+                ))}
               </div>
 
-              {/* Floating Icons */}
-              <motion.div 
-                animate={{ y: [0, -5, 0] }} 
-                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-                className="absolute left-4 top-10 w-6 h-6 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center text-white"
-              >
-                <Layers size={12} />
-              </motion.div>
-              <motion.div 
-                animate={{ y: [0, 5, 0] }} 
-                transition={{ repeat: Infinity, duration: 4, ease: "easeInOut", delay: 0.5 }}
-                className="absolute right-6 top-8 w-5 h-5 bg-white/20 backdrop-blur-md rounded-md flex items-center justify-center text-white"
-              >
-                <Target size={10} />
-              </motion.div>
-            </div>
+              {/* Action Button */}
+              <div className="w-full flex items-center gap-3">
+                {currentPage > 0 && (
+                  <button 
+                    onClick={handlePrev}
+                    className="w-12 h-12 rounded-2xl bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-all border border-slate-100"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                )}
+                
+                <button 
+                  onClick={handleNext}
+                  className="flex-1 h-12 bg-[#0873FF] text-white text-[14px] font-black rounded-2xl shadow-xl shadow-blue-500/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 group"
+                >
+                  {currentPage === PAGES.length - 1 ? '开启学习任务台' : '下一步'}
+                  {currentPage < PAGES.length - 1 && (
+                    <ChevronRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
+                  )}
+                </button>
+              </div>
 
-            <h2 className="text-xl font-bold text-slate-900 mb-3 tracking-tight">学习任务台</h2>
-            
-            <p className="text-[11px] leading-snug text-slate-500 max-w-xs mb-6 px-2">
-              通过“学习任务台”，轻松地管理和协调多个学习任务。在这里，你可以按任务链的顺序创建任务、分配优先级、调整任务间的关系，并随时回溯任务进度。学习任务台支持任务的灵活组合和动态调度，让你在复杂的学习场景中游刃有余。
-            </p>
-
-            <div className="flex flex-col gap-2 w-full max-w-[200px]">
-              <button 
-                onClick={onConfirm}
-                className="w-full py-2.5 bg-[#1a237e] text-white text-[13px] font-bold rounded-xl shadow-lg shadow-blue-900/20 hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                开启学习任务台
-              </button>
-              <button 
-                onClick={onClose}
-                className="w-full py-1.5 text-blue-600 font-medium text-[13px] hover:underline"
-              >
-                以后
-              </button>
-            </div>
-
-            {/* Pagination Decorator */}
-            <div className="flex gap-1 mt-4">
-                <div className="w-1 h-1 rounded-full bg-blue-600" />
-                <div className="w-1 h-1 rounded-full bg-slate-200" />
-                <div className="w-1 h-1 rounded-full bg-slate-200" />
+              {currentPage === 0 && (
+                <button 
+                  onClick={onClose}
+                  className="text-[12px] font-bold text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  跳过介绍
+                </button>
+              )}
             </div>
           </motion.div>
         </div>
@@ -94,3 +202,4 @@ const OnboardingModal: React.FC<OnboardingModalProps> = ({ isOpen, onClose, onCo
 };
 
 export default OnboardingModal;
+

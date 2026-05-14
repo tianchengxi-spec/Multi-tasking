@@ -31,7 +31,7 @@ const ToolRingController: React.FC<ToolRingControllerProps> = ({ combinations, o
     <>
       {/* Hidden Hot Zone in Top Right Corner */}
       <div 
-        className="absolute top-0 right-0 w-16 h-16 z-[2000] cursor-crosshair group flex items-start justify-end p-2"
+        className="absolute top-0 right-0 w-24 h-24 z-[50000] cursor-crosshair group flex items-start justify-end p-2"
         onDoubleClick={handleDoubleClick}
       >
         <div className="w-1.5 h-1.5 rounded-full bg-blue-500/0 group-hover:bg-blue-500/20 transition-colors" />

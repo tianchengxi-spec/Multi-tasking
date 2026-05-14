@@ -14,7 +14,7 @@ import ScheduleWidget from './ScheduleWidget';
 import DeadlineWidget from './DeadlineWidget';
 import DesktopClock from './DesktopClock';
 import { APP_CONFIG } from '../constants';
-import { Cloud, Video, FileVideo, Search, MoreVertical, Folder, Grid, List as ListIcon, Play, PenTool, Plus } from 'lucide-react';
+import { Cloud, Video, FileVideo, Search, MoreVertical, Folder, Grid, List as ListIcon, Play, PenTool, Plus, Globe, Sparkles, FileText } from 'lucide-react';
 import CreateBoardPanel from './CreateBoardPanel';
 
 interface DesktopProps {
@@ -70,7 +70,7 @@ const Desktop: React.FC<DesktopProps> = ({
     switch (app.type) {
       case AppType.NOTES: return <NotesApp state={app.state} initialNoteId={app.initialData?.noteId} />;
       case AppType.BROWSER: return <BrowserApp state={app.state} />;
-      case AppType.AI_ASSISTANT: return <GeminiApp apps={apps} />;
+      case AppType.AI_ASSISTANT: return <GeminiApp apps={apps} state={app.state} />;
       case AppType.FILES: return <FilesApp state={app.state} />;
       case AppType.CALENDAR: return <CalendarApp state={app.state} />;
       case AppType.CALCULATOR: return <CalculatorApp state={app.state} />;
@@ -173,8 +173,20 @@ const Desktop: React.FC<DesktopProps> = ({
     >
       <DesktopClock />
       
-      <div className="absolute top-40 left-12 w-[340px] z-0">
-        <ScheduleWidget onStartStudy={onStartStudy} />
+      <div className="absolute top-40 left-12 w-[340px] z-0 flex flex-col gap-4">
+        <ScheduleWidget 
+          title="英语六级"
+          subtitle="距考试 25 天"
+          icons={[Cloud, FileText]}
+          onStartStudy={onStartStudy} 
+        />
+        <ScheduleWidget 
+          title="学设计"
+          subtitle="交互设计"
+          icons={[Globe, PenTool, Sparkles]}
+          onStartStudy={onStartStudy}
+          accentColor="#0873FF"
+        />
       </div>
 
       <div className="absolute top-40 right-12 z-0">

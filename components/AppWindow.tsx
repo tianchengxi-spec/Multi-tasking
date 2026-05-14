@@ -70,7 +70,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
   const style: React.CSSProperties = useMemo(() => {
     const baseStyle: React.CSSProperties = {
       position: 'absolute',
-      zIndex: (app.isTopmost || app.isPinned) ? 10000 + app.zIndex : (app.state === 'floating-icon' ? 2000 + app.zIndex : app.zIndex),
+      zIndex: (app.isTopmost || app.isPinned) ? 10000 + app.zIndex : (app.state === 'floating-icon' ? 2000 + app.zIndex : (app.state === 'floating' ? 1000 + app.zIndex : app.zIndex)),
       transition: (isResizing || isSwapping) ? 'none' : 'all 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
       opacity: isSwapping ? 0.4 : 1,
     };

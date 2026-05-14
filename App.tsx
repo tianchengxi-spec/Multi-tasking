@@ -1,5 +1,6 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import SystemBar from './components/SystemBar';
 import Desktop from './components/Desktop';
 import Dock from './components/Dock';
@@ -22,6 +23,7 @@ import CreateBoardPanel from './components/CreateBoardPanel';
 import ControlCenter from './components/ControlCenter';
 import ToolRingController from './components/ToolRingController';
 import TaskSwitcher from './components/TaskSwitcher';
+import LayoutReconfigureSidebar from './components/LayoutReconfigureSidebar';
 
 const App: React.FC = () => {
   const [apps, setApps] = useState<AppInstance[]>([]);
@@ -30,6 +32,7 @@ const App: React.FC = () => {
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
   const [isTaskSwitcherOpen, setIsTaskSwitcherOpen] = useState(false);
+  const [isLayoutReconfigOpen, setIsLayoutReconfigOpen] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
   const [draggingAppId, setDraggingAppId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -382,13 +385,17 @@ const App: React.FC = () => {
     }
 
     if (existingApp) {
+      const floatingAppsCount = apps.filter(a => a.state === 'floating' && a.id !== existingApp.id).length;
+      const xOffset = floatingAppsCount * 20;
+      const yOffset = floatingAppsCount * 20;
+
       setApps(prev => prev.map(a => 
         a.id === existingApp.id ? { 
           ...a, 
           state: (forceState as WindowState) || 'maximized', 
           zIndex: newZIndex,
           size: forceState === 'floating' ? { width: 270, height: 450 } : { width: '100%', height: '100%' },
-          position: forceState === 'floating' ? { x: screenWidth - 270 - 16, y: 16 } : { x: 0, y: 0 }
+          position: forceState === 'floating' ? { x: screenWidth - 270 - 16 - xOffset, y: 16 + yOffset } : { x: 0, y: 0 }
         } : a
       ));
       setActiveAppId(existingApp.id);
@@ -398,13 +405,19 @@ const App: React.FC = () => {
 
     const newId = Math.random().toString(36).substr(2, 9);
     const newState: WindowState = (forceState as WindowState) || 'maximized';
+    
+    // Calculate offset for new floating app
+    const floatingAppsCount = apps.filter(a => a.state === 'floating').length;
+    const xOffset = floatingAppsCount * 20;
+    const yOffset = floatingAppsCount * 20;
+
     const newApp: AppInstance = {
       id: newId,
       type,
       title: type,
       state: newState,
       zIndex: newZIndex,
-      position: newState === 'floating' ? { x: screenWidth - 270 - 16, y: 16 } : { x: 0, y: 0 },
+      position: newState === 'floating' ? { x: screenWidth - 270 - 16 - xOffset, y: 16 + yOffset } : { x: 0, y: 0 },
       size: newState === 'floating' ? { width: 270, height: 450 } : { width: '100%', height: '100%' }
     };
     setApps(prev => [...prev, newApp]);
@@ -743,55 +756,67 @@ const App: React.FC = () => {
         <div className="absolute top-0 w-full z-50">
           <SystemBar isDark={shouldUseDarkIcons} />
         </div>
-        <Desktop 
-          apps={apps}
-          activeAppId={activeAppId}
-          onCloseApp={closeApp}
-          onMinimizeApp={(id) => setApps(prev => prev.map(a => a.id === id ? { ...a, state: 'minimized' } : a))}
-          onMaximize={() => {}}
-          onFocusApp={(id) => { 
-            setZIndexCounter(z => z + 1); 
-            setApps(prev => prev.map(a => {
-              if (a.id === id) {
-                const newState = a.state === 'floating-icon' ? 'floating' : a.state;
-                return { ...a, state: newState as WindowState, zIndex: zIndexCounter + 1 };
+        
+        <motion.div 
+          className="flex-1 flex flex-col overflow-hidden relative" 
+          onPointerDown={(e) => { touchStartY.current = e.clientY; }}
+          animate={{ 
+            x: isTaskSwitcherOpen ? '100%' : 0,
+            opacity: isTaskSwitcherOpen ? 0 : 1,
+            scale: isTaskSwitcherOpen ? 0.95 : 1
+          }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        >
+          <Desktop 
+            apps={apps}
+            activeAppId={activeAppId}
+            onCloseApp={closeApp}
+            onMinimizeApp={(id) => setApps(prev => prev.map(a => a.id === id ? { ...a, state: 'minimized' } : a))}
+            onMaximize={() => {}}
+            onFocusApp={(id) => { 
+              setZIndexCounter(z => z + 1); 
+              setApps(prev => prev.map(a => {
+                if (a.id === id) {
+                  const newState = a.state === 'floating-icon' ? 'floating' : a.state;
+                  return { ...a, state: newState as WindowState, zIndex: zIndexCounter + 1 };
+                }
+                return a;
+              })); 
+              setActiveAppId(id);
+              if (hasOpenApps) setIsDockVisible(false); 
+            }}
+            onOpenApp={openApp}
+            splitRatios={splitRatios}
+            onClickWallpaper={handleWallpaperClick}
+            isResizing={resizingDividerIndex !== null}
+            swappingAppId={swappingAppId}
+            swappingOverId={swappingOverId}
+            onDragAppStart={(id, x, y) => {
+              const app = apps.find(a => a.id === id);
+              if (!app) return;
+              
+              if (app.isPinned) return; // Prevent movement if pinned
+  
+              if (app.state === 'floating') {
+                setDraggingAppId(id);
+                setDragOffset({ x: x - app.position.x, y: y - app.position.y });
+                setZIndexCounter(z => z + 1);
+                setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
+                setActiveAppId(id);
+              } else if (app.state.startsWith('split-')) {
+                setSwappingAppId(id);
+                setSwapIconPos({ x, y });
+                setZIndexCounter(z => z + 1);
+                setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
+                setActiveAppId(id);
               }
-              return a;
-            })); 
-            setActiveAppId(id);
-            if (hasOpenApps) setIsDockVisible(false); 
-          }}
-          onOpenApp={openApp}
-          splitRatios={splitRatios}
-          onClickWallpaper={handleWallpaperClick}
-          isResizing={resizingDividerIndex !== null}
-          swappingAppId={swappingAppId}
-          swappingOverId={swappingOverId}
-          onDragAppStart={(id, x, y) => {
-            const app = apps.find(a => a.id === id);
-            if (!app) return;
-            
-            if (app.isPinned) return; // Prevent movement if pinned
-
-            if (app.state === 'floating') {
-              setDraggingAppId(id);
-              setDragOffset({ x: x - app.position.x, y: y - app.position.y });
-              setZIndexCounter(z => z + 1);
-              setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
-              setActiveAppId(id);
-            } else if (app.state.startsWith('split-')) {
-              setSwappingAppId(id);
-              setSwapIconPos({ x, y });
-              setZIndexCounter(z => z + 1);
-              setApps(prev => prev.map(a => a.id === id ? { ...a, zIndex: zIndexCounter + 1 } : a));
-              setActiveAppId(id);
-            }
-          }}
-          onStartStudy={startStudy}
-          onOpenCreator={() => setIsCreatorOpen(true)}
-          onTogglePin={togglePin}
-          onToggleTopmost={toggleTopmost}
-        />
+            }}
+            onStartStudy={startStudy}
+            onOpenCreator={() => setIsCreatorOpen(true)}
+            onTogglePin={togglePin}
+            onToggleTopmost={toggleTopmost}
+          />
+        </motion.div>
       </div>
 
       <ControlCenter 
@@ -830,78 +855,104 @@ const App: React.FC = () => {
         onOpenSingleApp={(type) => openApp(type, 'floating')}
       />
 
-      <TaskSwitcher 
-        isOpen={isTaskSwitcherOpen}
-        onClose={() => setIsTaskSwitcherOpen(false)}
-        combinations={savedCombinations}
-        currentApps={apps.filter(a => a.state !== 'minimized' && a.state !== 'floating-icon')}
-        onRestore={(combo) => {
-          setApps(prev => {
-            const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
-            const newApps = [...minimized];
-            combo.apps.forEach((appData, index) => {
-              const existingIdx = newApps.findIndex(a => a.type === appData.type);
-              if (existingIdx !== -1) {
-                newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state || 'maximized' as WindowState, zIndex: zIndexCounter + 10 + index };
-              } else {
-                const newId = Math.random().toString(36).substr(2, 9);
-                newApps.push({
-                  id: newId,
-                  type: appData.type,
-                  title: appData.type,
-                  state: appData.state || 'maximized' as WindowState,
-                  zIndex: zIndexCounter + 10 + index,
-                  position: { x: 0, y: 0 },
-                  size: { width: '100%', height: '100%' }
+      <AnimatePresence>
+        {isTaskSwitcherOpen && (
+          <TaskSwitcher 
+            isOpen={isTaskSwitcherOpen}
+            onClose={() => setIsTaskSwitcherOpen(false)}
+            combinations={savedCombinations}
+            currentApps={apps.filter(a => a.state !== 'minimized' && a.state !== 'floating-icon')}
+            onRestore={(combo) => {
+              setApps(prev => {
+                const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
+                const newApps = [...minimized];
+                combo.apps.forEach((appData, index) => {
+                  const existingIdx = newApps.findIndex(a => a.type === appData.type);
+                  if (existingIdx !== -1) {
+                    newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state || 'maximized' as WindowState, zIndex: zIndexCounter + 10 + index };
+                  } else {
+                    const newId = Math.random().toString(36).substr(2, 9);
+                    newApps.push({
+                      id: newId,
+                      type: appData.type,
+                      title: appData.type,
+                      state: appData.state || 'maximized' as WindowState,
+                      zIndex: zIndexCounter + 10 + index,
+                      position: { x: 0, y: 0 },
+                      size: { width: '100%', height: '100%' }
+                    });
+                  }
                 });
-              }
-            });
-            return newApps;
-          });
-          setZIndexCounter(prev => prev + 20);
-          setIsTaskSwitcherOpen(false);
+                return newApps;
+              });
+              setZIndexCounter(prev => prev + 20);
+              setIsTaskSwitcherOpen(false);
+            }}
+            onClearTasks={() => {
+              setApps(prev => prev.map(a => ({ ...a, state: 'minimized' as WindowState })));
+              setIsTaskSwitcherOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <LayoutReconfigureSidebar 
+        isOpen={isLayoutReconfigOpen}
+        onClose={() => setIsLayoutReconfigOpen(false)}
+        onReconfigure={() => {
+          // Add logic to reset/auto-arrange layout if needed
+          setApps(prev => prev.map(a => ({ ...a, state: 'split-middle' }))); // Example action
+          setIsLayoutReconfigOpen(false);
         }}
-        onClearTasks={() => {
-          setApps(prev => prev.map(a => ({ ...a, state: 'minimized' as WindowState })));
-          setIsTaskSwitcherOpen(false);
+        onSaveCombination={() => {
+          const splitAppsToSave = apps.filter(a => a.state.startsWith('split-'));
+          if (splitAppsToSave.length >= 2) {
+            const newCombo: TaskCombination = {
+              id: Math.random().toString(36).substr(2, 9),
+              name: `自定义组合 ${savedCombinations.length}`,
+              apps: splitAppsToSave.map(a => ({ type: a.type, state: a.state })),
+              splitRatios: [...splitRatios],
+              timestamp: Date.now()
+            };
+            setSavedCombinations(prev => [...prev, newCombo]);
+            setIsLayoutReconfigOpen(false);
+            if (window.navigator.vibrate) window.navigator.vibrate([10, 30, 20]);
+          }
         }}
       />
 
-      {/* Swipe Triggers for Task Switcher (Bottom Corners) */}
-      {(apps.some(a => a.state.startsWith('split-') || a.state === 'maximized')) && !isTaskSwitcherOpen && (
+      {/* 5-Click Trigger for Layout Reconfig (Right Edge) */}
+      <div 
+        className="absolute top-0 right-0 w-4 h-full z-[5000] cursor-pointer"
+        onClick={(e) => {
+          if (e.detail === 5) {
+            setIsLayoutReconfigOpen(true);
+            if (window.navigator.vibrate) window.navigator.vibrate([20, 20, 20, 20, 20]);
+          }
+        }}
+      />
+
+      {/* Triple-Click Triggers for Task Switcher (Bottom area outside dock) */}
+      {!isTaskSwitcherOpen && (
         <>
           <div 
-            className="absolute bottom-0 left-0 w-24 h-12 z-[2500] cursor-n-resize group"
-            onPointerDown={(e) => {
-              const startY = e.clientY;
-              const handleMove = (moveEvent: PointerEvent) => {
-                if (startY - moveEvent.clientY > 50) {
-                  setIsTaskSwitcherOpen(true);
-                  window.removeEventListener('pointermove', handleMove);
-                }
-              };
-              window.addEventListener('pointermove', handleMove);
-              window.addEventListener('pointerup', () => window.removeEventListener('pointermove', handleMove), { once: true });
+            className="absolute bottom-0 left-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer"
+            onClick={(e) => {
+              if (e.detail === 3) {
+                setIsTaskSwitcherOpen(true);
+                if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
+              }
             }}
-          >
-            <div className="absolute bottom-1 left-4 w-8 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
-          </div>
+          />
           <div 
-            className="absolute bottom-0 right-0 w-24 h-12 z-[2500] cursor-n-resize group"
-            onPointerDown={(e) => {
-              const startY = e.clientY;
-              const handleMove = (moveEvent: PointerEvent) => {
-                if (startY - moveEvent.clientY > 50) {
-                  setIsTaskSwitcherOpen(true);
-                  window.removeEventListener('pointermove', handleMove);
-                }
-              };
-              window.addEventListener('pointermove', handleMove);
-              window.addEventListener('pointerup', () => window.removeEventListener('pointermove', handleMove), { once: true });
+            className="absolute bottom-0 right-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer"
+            onClick={(e) => {
+              if (e.detail === 3) {
+                setIsTaskSwitcherOpen(true);
+                if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
+              }
             }}
-          >
-            <div className="absolute bottom-1 right-4 w-8 h-1 bg-white/20 rounded-full group-hover:bg-white/40 transition-colors" />
-          </div>
+          />
         </>
       )}
 
