@@ -18,23 +18,45 @@ const ToolRingController: React.FC<ToolRingControllerProps> = ({ combinations, o
   // We only show the ring if it's been awakened via double click
   const lastRing = toolRings[toolRings.length - 1];
 
-  const handleDoubleClick = () => {
-    if (toolRings.length > 0) {
-      setIsOpen(true);
-      if (window.navigator.vibrate) window.navigator.vibrate(100);
-    }
-  };
+  useEffect(() => {
+    const handleGlobalDblClick = (e: MouseEvent) => {
+      // Top-right corner region (96px width and 96px height)
+      const hotZoneWidth = 96;
+      const hotZoneHeight = 96;
+      const isTopRight = e.clientX > window.innerWidth - hotZoneWidth && e.clientY < hotZoneHeight;
+      
+      if (isTopRight) {
+        // Ensure we are NOT double clicking on any interactive window buttons (e.g. X/Close)
+        const target = e.target as HTMLElement;
+        const isInteractive = target.closest('button') || 
+                            target.closest('a') || 
+                            target.closest('input') || 
+                            target.closest('select') || 
+                            target.closest('textarea') || 
+                            target.getAttribute('role') === 'button';
+        
+        if (!isInteractive && toolRings.length > 0) {
+          setIsOpen(true);
+          if (window.navigator.vibrate) window.navigator.vibrate(100);
+        }
+      }
+    };
+
+    window.addEventListener('dblclick', handleGlobalDblClick, true);
+    return () => {
+      window.removeEventListener('dblclick', handleGlobalDblClick, true);
+    };
+  }, [toolRings.length]);
 
   if (toolRings.length === 0) return null;
 
   return (
     <>
-      {/* Hidden Hot Zone in Top Right Corner */}
+      {/* Hidden Hot Zone in Top Right Corner (visual layout decorator, non-blocking) */}
       <div 
-        className="absolute top-0 right-0 w-24 h-24 z-[50000] cursor-crosshair group flex items-start justify-end p-2"
-        onDoubleClick={handleDoubleClick}
+        className="absolute top-0 right-0 w-24 h-24 z-[50000] pointer-events-none flex items-start justify-end p-2"
       >
-        <div className="w-1.5 h-1.5 rounded-full bg-blue-500/0 group-hover:bg-blue-500/20 transition-colors" />
+        <div className="w-1.5 h-1.5 rounded-full bg-blue-500/0" />
       </div>
 
       <AnimatePresence>
