@@ -19,15 +19,23 @@ const ToolRingController: React.FC<ToolRingControllerProps> = ({ combinations, o
   const lastRing = toolRings[toolRings.length - 1];
 
   useEffect(() => {
-    const handleGlobalDblClick = (e: MouseEvent) => {
+    let lastTapTime = 0;
+
+    const handleActivation = (clientX: number, clientY: number, target: HTMLElement, isTouch: boolean, e?: Event) => {
       // Top-right corner region (96px width and 96px height)
       const hotZoneWidth = 96;
       const hotZoneHeight = 96;
-      const isTopRight = e.clientX > window.innerWidth - hotZoneWidth && e.clientY < hotZoneHeight;
+      const isTopRight = clientX > window.innerWidth - hotZoneWidth && clientY < hotZoneHeight;
       
       if (isTopRight) {
-        // Ensure we are NOT double clicking on any interactive window buttons (e.g. X/Close)
-        const target = e.target as HTMLElement;
+        // 1. Guard against unmounted button click race conditions using a global lock timestamp
+        const lastWindowAction = (window as any).__lastWindowActionTime || 0;
+        const now = Date.now();
+        if (now - lastWindowAction < 800) {
+          return;
+        }
+
+        // 2. Ensure target itself isn't interactive (closest checks for button, forms, etc.)
         const isInteractive = target.closest('button') || 
                             target.closest('a') || 
                             target.closest('input') || 
@@ -36,15 +44,40 @@ const ToolRingController: React.FC<ToolRingControllerProps> = ({ combinations, o
                             target.getAttribute('role') === 'button';
         
         if (!isInteractive && toolRings.length > 0) {
+          if (e && isTouch) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
           setIsOpen(true);
           if (window.navigator.vibrate) window.navigator.vibrate(100);
         }
       }
     };
 
+    const handleGlobalDblClick = (e: MouseEvent) => {
+      handleActivation(e.clientX, e.clientY, e.target as HTMLElement, false);
+    };
+
+    const handleGlobalTouchEnd = (e: TouchEvent) => {
+      if (e.changedTouches.length !== 1) return;
+      
+      const now = Date.now();
+      const DOUBLE_TAP_DELAY = 300;
+      
+      if (now - lastTapTime < DOUBLE_TAP_DELAY) {
+        const touch = e.changedTouches[0];
+        handleActivation(touch.clientX, touch.clientY, e.target as HTMLElement, true, e);
+      }
+      
+      lastTapTime = now;
+    };
+
     window.addEventListener('dblclick', handleGlobalDblClick, true);
+    window.addEventListener('touchend', handleGlobalTouchEnd, { capture: true, passive: false });
+    
     return () => {
       window.removeEventListener('dblclick', handleGlobalDblClick, true);
+      window.removeEventListener('touchend', handleGlobalTouchEnd, true);
     };
   }, [toolRings.length]);
 

@@ -223,14 +223,22 @@ const AppWindow: React.FC<AppWindowProps> = ({
               {!isSidebar && app.state === 'floating' && (
                 <div className="flex items-center gap-1.5 ml-1">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onTogglePin?.(); }} 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      (window as any).__lastWindowActionTime = Date.now();
+                      onTogglePin?.(); 
+                    }} 
                     className={`p-1 rounded-md transition-all ${app.isPinned ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:bg-slate-200'}`}
                     title="钉起 (固定位置)"
                   >
                     <Pin size={12} className={app.isPinned ? 'fill-current' : ''} />
                   </button>
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onToggleTopmost?.(); }} 
+                    onClick={(e) => { 
+                      e.stopPropagation(); 
+                      (window as any).__lastWindowActionTime = Date.now();
+                      onToggleTopmost?.(); 
+                    }} 
                     className={`p-1 rounded-md transition-all ${app.isTopmost ? 'bg-amber-100 text-amber-600' : 'text-slate-400 hover:bg-slate-200'}`}
                     title="挂起 (置顶显示)"
                   >
@@ -241,7 +249,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
             </div>
             {!isSidebar && (
               <div className="flex items-center gap-1">
-                <button onClick={(e) => { e.stopPropagation(); onClose(app.id); }} className="p-1.5 hover:bg-rose-100 rounded-md transition-colors text-slate-400 hover:text-rose-600">
+                <button 
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    (window as any).__lastWindowActionTime = Date.now();
+                    onClose(app.id); 
+                  }} 
+                  className="p-1.5 hover:bg-rose-100 rounded-md transition-colors text-slate-400 hover:text-rose-600"
+                >
                   <X size={16} />
                 </button>
               </div>
