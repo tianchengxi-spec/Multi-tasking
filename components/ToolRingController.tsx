@@ -114,10 +114,26 @@ const ToolRingController: React.FC<ToolRingControllerProps> = ({ combinations, o
                   className="relative w-6 h-6 flex items-center justify-center"
                 >
                   <div 
-                    className="absolute top-0.5 w-3 h-5 bg-blue-500 shadow-lg shadow-blue-500/40" 
+                    className={`absolute top-0.5 w-3 h-5 shadow-lg ${
+                      lastRing.color === 'rose' ? 'bg-rose-500 shadow-rose-500/40' :
+                      lastRing.color === 'amber' ? 'bg-amber-500 shadow-amber-500/40' :
+                      lastRing.color === 'emerald' ? 'bg-emerald-500 shadow-emerald-500/40' :
+                      lastRing.color === 'indigo' ? 'bg-indigo-500 shadow-indigo-500/40' :
+                      lastRing.color === 'purple' ? 'bg-purple-500 shadow-purple-500/40' :
+                      lastRing.color === 'slate' ? 'bg-slate-700 shadow-slate-700/40' :
+                      'bg-[#0873FF] shadow-[#0873FF]/40'
+                    }`}
                     style={{ clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)', borderRadius: '2px' }} 
                   />
-                  <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-white shadow-sm z-10" />
+                  <div className={`w-3 h-3 rounded-full border-2 border-white shadow-sm z-10 ${
+                    lastRing.color === 'rose' ? 'bg-rose-600' :
+                    lastRing.color === 'amber' ? 'bg-amber-600' :
+                    lastRing.color === 'emerald' ? 'bg-emerald-600' :
+                    lastRing.color === 'indigo' ? 'bg-indigo-600' :
+                    lastRing.color === 'purple' ? 'bg-purple-600' :
+                    lastRing.color === 'slate' ? 'bg-slate-800' :
+                    'bg-blue-600'
+                  }`} />
                 </motion.div>
               </div>
 
