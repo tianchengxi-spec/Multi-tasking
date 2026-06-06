@@ -7,7 +7,7 @@ import { APP_CONFIG } from '../constants';
 interface CreateBoardPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onDeploy: (data: { title: string; apps: AppType[]; mode: 'board' | 'toolring'; color: string }) => void;
+  onDeploy: (data: { title: string; apps: AppType[]; mode: 'board' | 'toolring'; color: string; notes?: string }) => void;
 }
 
 const COLOR_OPTIONS = [
@@ -57,7 +57,8 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
       title: finalTitle,
       apps: selectedApps,
       mode: creationMode,
-      color: selectedColor
+      color: selectedColor,
+      notes: notes.trim()
     });
     onClose();
     // Reset form

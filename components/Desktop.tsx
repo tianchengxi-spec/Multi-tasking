@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import AppWindow from './AppWindow';
-import { AppInstance, AppType } from '../types';
+import { AppInstance, AppType, TaskCombination, WindowState } from '../types';
 import GeminiApp from './apps/GeminiApp';
 import NotesApp from './apps/NotesApp';
 import BrowserApp from './apps/BrowserApp';
@@ -14,7 +14,26 @@ import ScheduleWidget from './ScheduleWidget';
 import DeadlineWidget from './DeadlineWidget';
 import DesktopClock from './DesktopClock';
 import { APP_CONFIG } from '../constants';
-import { Cloud, Video, FileVideo, Search, MoreVertical, Folder, Grid, List as ListIcon, Play, PenTool, Plus, Globe, Sparkles, FileText } from 'lucide-react';
+import { 
+  Cloud, 
+  Video, 
+  FileVideo, 
+  Search, 
+  MoreVertical, 
+  Folder, 
+  Grid, 
+  List as ListIcon, 
+  Play, 
+  PenTool, 
+  Plus, 
+  Globe, 
+  Sparkles, 
+  FileText,
+  Calendar,
+  Settings,
+  Calculator,
+  Book
+} from 'lucide-react';
 import CreateBoardPanel from './CreateBoardPanel';
 
 interface DesktopProps {
@@ -35,7 +54,38 @@ interface DesktopProps {
   onOpenCreator?: () => void;
   onTogglePin?: (id: string) => void;
   onToggleTopmost?: (id: string) => void;
+  savedCombinations?: TaskCombination[];
+  onRestoreCombination?: (combo: TaskCombination) => void;
 }
+
+const getAppIcon = (type: AppType) => {
+  switch (type) {
+    case AppType.NOTES: return FileText;
+    case AppType.FILES: return Folder;
+    case AppType.BROWSER: return Globe;
+    case AppType.AI_ASSISTANT: return Sparkles;
+    case AppType.CALENDAR: return Calendar;
+    case AppType.SETTINGS: return Settings;
+    case AppType.CALCULATOR: return Calculator;
+    case AppType.CLOUD_DRIVE: return Cloud;
+    case AppType.WHITEBOARD: return PenTool;
+    case AppType.DICTIONARY: return Book;
+    default: return Globe;
+  }
+};
+
+const getComboHexColor = (colorId?: string) => {
+  switch (colorId) {
+    case 'blue': return '#0873FF';
+    case 'rose': return '#f43f5e';
+    case 'amber': return '#f59e0b';
+    case 'emerald': return '#10b981';
+    case 'indigo': return '#6366f1';
+    case 'purple': return '#a855f7';
+    case 'slate': return '#1e293b';
+    default: return '#0873FF';
+  }
+};
 
 const Desktop: React.FC<DesktopProps> = ({ 
   apps, 
@@ -53,7 +103,9 @@ const Desktop: React.FC<DesktopProps> = ({
   onStartStudy,
   onOpenCreator,
   onTogglePin,
-  onToggleTopmost
+  onToggleTopmost,
+  savedCombinations = [],
+  onRestoreCombination
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
@@ -173,20 +225,17 @@ const Desktop: React.FC<DesktopProps> = ({
     >
       <DesktopClock />
       
-      <div className="absolute top-40 left-12 w-[340px] z-0 flex flex-col gap-4">
-        <ScheduleWidget 
-          title="英语六级"
-          subtitle="距考试 25 天"
-          icons={[Cloud, FileText]}
-          onStartStudy={onStartStudy} 
-        />
-        <ScheduleWidget 
-          title="学设计"
-          subtitle="交互设计"
-          icons={[Globe, PenTool, Sparkles]}
-          onStartStudy={onStartStudy}
-          accentColor="#0873FF"
-        />
+      <div className="absolute top-40 left-12 w-[340px] z-0 flex flex-col gap-4 max-h-[75vh] overflow-y-auto pr-2 scrollbar-none">
+        {savedCombinations.filter(combo => combo.mode === 'board' && combo.id !== 'default-toolring').map((combo) => (
+          <ScheduleWidget 
+            key={combo.id}
+            title={combo.name || "自定义看板"}
+            subtitle={combo.notes || "专属定制工作区"}
+            icons={combo.apps.map(app => getAppIcon(app.type))}
+            onStartStudy={() => onRestoreCombination?.(combo)}
+            accentColor={getComboHexColor(combo.color)}
+          />
+        ))}
       </div>
 
       <div className="absolute top-40 right-12 z-0">

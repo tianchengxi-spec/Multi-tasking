@@ -732,6 +732,58 @@ const App: React.FC = () => {
     setIsDockVisible(false);
   }, [zIndexCounter]);
 
+  const handleRestoreCombination = useCallback((combo: TaskCombination) => {
+    setApps(prev => {
+      // Minimize current apps
+      const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
+      
+      // Add or Restore apps from combo
+      const newApps = [...minimized];
+      combo.apps.forEach((appData, index) => {
+        const existingIdx = newApps.findIndex(a => a.type === appData.type);
+        const newApp: AppInstance = {
+          id: Math.random().toString(36).substr(2, 9),
+          type: appData.type,
+          title: appData.type,
+          state: appData.state,
+          zIndex: zIndexCounter + 10 + index,
+          position: { x: 0, y: 0 },
+          size: { width: '100%', height: '100%' }
+        };
+        if (existingIdx !== -1) {
+          newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state, zIndex: zIndexCounter + 10 + index };
+        } else {
+          newApps.push(newApp);
+        }
+      });
+      return newApps;
+    });
+    
+    if (combo.splitRatios) {
+      setSplitRatios(combo.splitRatios as [number, number]);
+    } else {
+      if (combo.apps.length === 2) setSplitRatios([0.5, 0.66]);
+      else if (combo.apps.length === 3) setSplitRatios([0.33, 0.66]);
+      else setSplitRatios([0.5, 0.66]);
+    }
+    
+    setIsDockVisible(false);
+
+    // Auto focus the first app inside the combination
+    if (combo.apps.length > 0) {
+      const firstType = combo.apps[0].type;
+      setTimeout(() => {
+        setApps(prev => {
+          const matched = prev.find(a => a.type === firstType && a.state !== 'minimized');
+          if (matched) {
+            setActiveAppId(matched.id);
+          }
+          return prev;
+        });
+      }, 100);
+    }
+  }, [zIndexCounter]);
+
   return (
     <div 
       className="h-screen w-screen flex flex-col overflow-hidden relative border-[12px] border-slate-900 rounded-[3rem] shadow-2xl select-none"
@@ -815,6 +867,8 @@ const App: React.FC = () => {
             onOpenCreator={() => setIsCreatorOpen(true)}
             onTogglePin={togglePin}
             onToggleTopmost={toggleTopmost}
+            savedCombinations={savedCombinations}
+            onRestoreCombination={handleRestoreCombination}
           />
         </motion.div>
       </div>
@@ -964,42 +1018,7 @@ const App: React.FC = () => {
         onDragStart={(type, x, y) => setDragIcon({ type, x, y, isOverFloatingZone: false, isOverLeftZone: false, isOverRightZone: false, isOverDivider: false })}
         onVisibilityChange={setIsDockVisible}
         savedCombinations={savedCombinations}
-        onRestoreCombination={(combo) => {
-          setApps(prev => {
-            // Minimize current apps
-            const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
-            
-            // Add or Restore apps from combo
-            const newApps = [...minimized];
-            combo.apps.forEach((appData, index) => {
-              const existingIdx = newApps.findIndex(a => a.type === appData.type);
-              const newApp: AppInstance = {
-                id: Math.random().toString(36).substr(2, 9),
-                type: appData.type,
-                title: appData.type,
-                state: appData.state,
-                zIndex: 10 + index,
-                position: { x: 0, y: 0 },
-                size: { width: '100%', height: '100%' }
-              };
-              if (existingIdx !== -1) {
-                newApps[existingIdx] = { ...newApps[existingIdx], state: appData.state, zIndex: 10 + index };
-              } else {
-                newApps.push(newApp);
-              }
-            });
-            return newApps;
-          });
-          
-          if (combo.splitRatios) {
-            setSplitRatios(combo.splitRatios);
-          } else {
-            if (combo.apps.length === 2) setSplitRatios([0.5, 0.66]);
-            if (combo.apps.length === 3) setSplitRatios([0.33, 0.66]);
-          }
-          
-          setIsDockVisible(false);
-        }}
+        onRestoreCombination={handleRestoreCombination}
         onRemoveCombination={(id) => setSavedCombinations(prev => prev.filter(c => c.id !== id))}
       />
 
@@ -1191,6 +1210,7 @@ const App: React.FC = () => {
             name: data.title,
             mode: data.mode,
             color: data.color,
+            notes: data.notes,
             apps: data.apps.map((type, i) => {
               let state: WindowState = 'maximized';
               if (data.mode === 'board') {

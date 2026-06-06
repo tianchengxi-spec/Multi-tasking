@@ -16,9 +16,19 @@ const PAGES = [
     icon: <Layout size={24} />,
     color: 'from-blue-600 to-indigo-700',
     illustration: (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-24 h-24 bg-white/10 backdrop-blur-xl border border-white/40 rounded-3xl flex items-center justify-center text-white shadow-2xl">
-          <Layout size={32} />
+      <div className="absolute inset-0 flex items-center justify-center p-4">
+        {/* Styled after the uploaded image: thick blue rounded frame with inner white canvas and pastel grid views */}
+        <div className="w-[190px] h-[115px] bg-[#2C5CE5] rounded-[1.75rem] p-3 shadow-2xl flex flex-col justify-end overflow-hidden">
+          <div className="w-full h-[calc(100%+8px)] bg-white rounded-[1rem] p-2 grid grid-cols-2 grid-rows-2 gap-2 mt-auto">
+            {/* Top Left: Light Blue */}
+            <div className="bg-[#EBF4FF] border border-[#D2E6FF] rounded-[0.5rem]" />
+            {/* Top Right: Light Orange */}
+            <div className="bg-[#FFF7E8] border border-[#FFE7C4] rounded-[0.5rem]" />
+            {/* Bottom Left: Light Violet */}
+            <div className="bg-[#FAF0FF] border border-[#F2D7FF] rounded-[0.5rem]" />
+            {/* Bottom Right: Light Green */}
+            <div className="bg-[#ECFDF2] border border-[#CEF9DA] rounded-[0.5rem]" />
+          </div>
         </div>
       </div>
     )

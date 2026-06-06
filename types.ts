@@ -33,6 +33,7 @@ export interface TaskCombination {
   name?: string;
   mode?: 'board' | 'toolring';
   color?: string;
+  notes?: string;
   apps: { type: AppType; state: WindowState }[];
   splitRatios: number[];
   timestamp: number;
