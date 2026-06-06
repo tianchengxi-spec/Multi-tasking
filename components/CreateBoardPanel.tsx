@@ -83,7 +83,7 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -40, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute top-4 left-6 h-fit max-h-[calc(100%-2rem)] w-[400px] bg-white border border-slate-100 rounded-[3rem] shadow-2xl z-[200] py-6 px-8 flex flex-col min-h-0 overflow-hidden"
+            className="absolute top-6 left-6 h-[calc(100%-3rem)] w-[400px] bg-white border border-slate-100 rounded-[3rem] shadow-2xl z-[200] p-8 flex flex-col min-h-0 overflow-hidden"
           >
             {/* Mode Selector */}
             <div className="flex bg-slate-100 p-1 rounded-2xl mb-8">
@@ -113,7 +113,7 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
               </button>
             </div>
 
-            <div className="space-y-6 overflow-y-auto pr-2 custom-scrollbar flex-1 max-h-[calc(100vh-14rem)] md:max-h-[500px] min-h-0">
+            <div className="space-y-8 overflow-y-auto pr-2 custom-scrollbar flex-1 min-h-0">
               {/* Task Name */}
               <div className="space-y-3">
                 <label className="text-xs font-black uppercase tracking-widest text-slate-400">
@@ -374,7 +374,7 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
               <button 
                 onClick={handleDeploy}
                 disabled={selectedApps.length === 0}
-                className={`w-full py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl transition-all mt-4 mb-2
+                className={`w-full py-5 rounded-[2rem] font-black uppercase tracking-widest shadow-xl transition-all mt-4 mb-2
                   ${selectedApps.length > 0 
                     ? 'bg-[#0873FF] text-white shadow-blue-500/20 hover:scale-[1.02] active:scale-95' 
                     : 'bg-slate-100 text-slate-300 shadow-none cursor-not-allowed'
