@@ -6,7 +6,7 @@ import Desktop from './components/Desktop';
 import Dock from './components/Dock';
 import { AppInstance, AppType, WindowState } from './types';
 import { APP_CONFIG } from './constants';
-import { Plus } from 'lucide-react';
+import { Plus, Sparkles, X, RefreshCw, LayoutGrid } from 'lucide-react';
 
 interface DragIconState {
   type: AppType;
@@ -88,6 +88,10 @@ const App: React.FC = () => {
   const [saveButtonPos, setSaveButtonPos] = useState({ x: 0, y: 0 });
   const saveButtonTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Smart Reflow dialog state
+  const [showReflowDialog, setShowReflowDialog] = useState(false);
+  const [reflowDialogIgnored, setReflowDialogIgnored] = useState(false);
+
   // Click tracking for onboarding
   const [clickCount, setClickCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -158,6 +162,100 @@ const App: React.FC = () => {
   useEffect(() => {
     console.log('四宫格形态已满：', isFourGridFull);
   }, [isFourGridFull]);
+
+  // Trigger Smart Reflow dialog when dual-split + 2 floating apps have been open for 5 seconds
+  useEffect(() => {
+    const splitCount = apps.filter(a => a.state.startsWith('split-')).length;
+    const floatingCount = apps.filter(a => a.state === 'floating').length;
+    const isTargetLayout = splitCount === 2 && floatingCount === 2;
+
+    if (!isTargetLayout) {
+      setShowReflowDialog(false);
+      setReflowDialogIgnored(false);
+    } else {
+      if (!reflowDialogIgnored && !showReflowDialog) {
+        const timer = setTimeout(() => {
+          setShowReflowDialog(true);
+        }, 5000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [apps, reflowDialogIgnored, showReflowDialog]);
+
+  // Handle Proximity Reflow
+  const handleProximityReflow = useCallback(() => {
+    const splitAppsList = apps.filter(a => a.state.startsWith('split-'));
+    const floatingAppsList = apps.filter(a => a.state === 'floating');
+    const targetApps = [...splitAppsList, ...floatingAppsList];
+    
+    if (targetApps.length !== 4) return;
+
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
+
+    // Calculate current centers of all 4 apps
+    const appsWithCoord = targetApps.map(app => {
+      let cx = screenWidth / 2;
+      let cy = screenHeight / 2;
+
+      if (app.state === 'split-left') {
+        cx = screenWidth / 4;
+        cy = screenHeight / 2;
+      } else if (app.state === 'split-right') {
+        cx = (3 * screenWidth) / 4;
+        cy = screenHeight / 2;
+      } else if (app.state === 'floating') {
+        const w = typeof app.size.width === 'number' ? app.size.width : 270;
+        const h = typeof app.size.height === 'number' ? app.size.height : 450;
+        cx = app.position.x + w / 2;
+        cy = app.position.y + h / 2;
+      }
+
+      return { app, cx, cy };
+    });
+
+    // 1. Sort all 4 apps by horizontal center X
+    appsWithCoord.sort((a, b) => a.cx - b.cx);
+
+    // The first 2 apps in the sorted list are on the Left side
+    // The latter 2 apps are on the Right side
+    const leftSideApps = [appsWithCoord[0], appsWithCoord[1]];
+    const rightSideApps = [appsWithCoord[2], appsWithCoord[3]];
+
+    // 2. Classify Left side apps: sort by vertical center Y
+    leftSideApps.sort((a, b) => a.cy - b.cy);
+    const leftTopApp = leftSideApps[0].app;
+    const leftBottomApp = leftSideApps[1].app;
+
+    // 3. Classify Right side apps: sort by vertical center Y
+    rightSideApps.sort((a, b) => a.cy - b.cy);
+    const rightTopApp = rightSideApps[0].app;
+    const rightBottomApp = rightSideApps[1].app;
+
+    // 4. Update the state of these 4 apps
+    setApps(prev => {
+      const newApps = prev.map(a => {
+        if (a.id === leftTopApp.id) {
+          return { ...a, state: 'split-left-top' as WindowState, size: { width: '50%', height: '50%' } };
+        }
+        if (a.id === leftBottomApp.id) {
+          return { ...a, state: 'split-left-bottom' as WindowState, size: { width: '50%', height: '50%' } };
+        }
+        if (a.id === rightTopApp.id) {
+          return { ...a, state: 'split-right-top' as WindowState, size: { width: '50%', height: '50%' } };
+        }
+        if (a.id === rightBottomApp.id) {
+          return { ...a, state: 'split-right-bottom' as WindowState, size: { width: '50%', height: '50%' } };
+        }
+        return a;
+      });
+      return newApps;
+    });
+
+    // Reset split ratios to default to show perfect 50/50 4-quadrant grid
+    setSplitRatios([0.5, 0.66]);
+    setShowReflowDialog(false);
+  }, [apps]);
 
   const hasBackgroundApp = useMemo(() => 
     apps.some(a => a.state === 'maximized' || a.state.startsWith('split-')),
@@ -1377,6 +1475,72 @@ const App: React.FC = () => {
         }}
       />
       
+      <AnimatePresence>
+        {showReflowDialog && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="fixed top-6 right-6 z-[6000] w-[340px] bg-white/95 backdrop-blur-xl border border-slate-100/85 rounded-3xl p-5 shadow-[0_24px_60px_rgba(30,41,59,0.12)] flex flex-col pointer-events-auto"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="text-blue-500 animate-pulse">
+                  <Sparkles size={16} fill="currentColor" />
+                </div>
+                <span className="text-[13px] font-black text-slate-500 tracking-wider">智能收束</span>
+              </div>
+              <button 
+                onClick={() => {
+                  setReflowDialogIgnored(true);
+                  setShowReflowDialog(false);
+                }}
+                className="w-6 h-6 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+                id="reflow-close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-gradient-to-tr from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-500/25">
+                <LayoutGrid size={24} />
+              </div>
+              <div className="flex-1 pt-1">
+                <p className="text-slate-800 text-[13px] font-black leading-relaxed">
+                  检测到窗口较多，是否开启智能收束以优化当前场景布局？
+                </p>
+              </div>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setReflowDialogIgnored(true);
+                  setShowReflowDialog(false);
+                }}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200/80 active:scale-95 text-slate-600 font-black text-xs rounded-2xl transition-all"
+                id="reflow-ignore"
+              >
+                忽略
+              </button>
+              <button
+                onClick={handleProximityReflow}
+                className="flex-[1.4] py-3 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black text-xs rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                id="reflow-reconstruct"
+              >
+                <RefreshCw size={13} />
+                立即重构
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <style>{`.vertical-text { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.15em; }`}</style>
     </div>
   );
