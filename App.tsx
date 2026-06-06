@@ -93,6 +93,31 @@ const App: React.FC = () => {
   const [showReflowDialog, setShowReflowDialog] = useState(false);
   const [reflowDialogIgnored, setReflowDialogIgnored] = useState(false);
 
+  // Tap/Pointer tracking for Task Switcher (Bottom areas)
+  const bottomLeftTapCountRef = useRef(0);
+  const bottomLeftLastTimeRef = useRef(0);
+  const bottomRightTapCountRef = useRef(0);
+  const bottomRightLastTimeRef = useRef(0);
+
+  const handleBottomAreaPointerDown = (side: 'left' | 'right') => {
+    const now = Date.now();
+    const countRef = side === 'left' ? bottomLeftTapCountRef : bottomRightTapCountRef;
+    const timeRef = side === 'left' ? bottomLeftLastTimeRef : bottomRightLastTimeRef;
+
+    if (now - timeRef.current < 450) {
+      countRef.current += 1;
+    } else {
+      countRef.current = 1;
+    }
+    timeRef.current = now;
+
+    if (countRef.current >= 3) {
+      setIsTaskSwitcherOpen(true);
+      if (window.navigator.vibrate) window.navigator.vibrate([30, 30, 30]);
+      countRef.current = 0; // Reset
+    }
+  };
+
   // Click tracking for onboarding
   const [clickCount, setClickCount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -1221,11 +1246,16 @@ const App: React.FC = () => {
         }}
       />
 
-      {/* Triple-Click Triggers for Task Switcher (Bottom area outside dock) */}
+      {/* Triple-Click/Touch Triggers for Task Switcher (Bottom area outside dock) */}
       {!isTaskSwitcherOpen && (
         <>
           <div 
-            className="absolute bottom-0 left-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer"
+            className="absolute bottom-0 left-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer touch-none"
+            onPointerDown={(e) => {
+              if (e.isPrimary) {
+                handleBottomAreaPointerDown('left');
+              }
+            }}
             onClick={(e) => {
               if (e.detail === 3) {
                 setIsTaskSwitcherOpen(true);
@@ -1234,7 +1264,12 @@ const App: React.FC = () => {
             }}
           />
           <div 
-            className="absolute bottom-0 right-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer"
+            className="absolute bottom-0 right-0 w-[calc(50%-160px)] h-16 z-[2500] active:bg-white/5 transition-colors cursor-pointer touch-none"
+            onPointerDown={(e) => {
+              if (e.isPrimary) {
+                handleBottomAreaPointerDown('right');
+              }
+            }}
             onClick={(e) => {
               if (e.detail === 3) {
                 setIsTaskSwitcherOpen(true);
