@@ -3,7 +3,17 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { AppInstance, TaskCombination, AppType, WindowState } from '../types';
 import { APP_CONFIG } from '../constants';
-import { X, Trash2, LayoutGrid } from 'lucide-react';
+import { X, Trash2, LayoutGrid, Plus, Cloud, Folder, FileVideo, Play, Search, MoreVertical } from 'lucide-react';
+
+// Live App component imports for real-time snapshots
+import NotesApp from './apps/NotesApp';
+import BrowserApp from './apps/BrowserApp';
+import GeminiApp from './apps/GeminiApp';
+import FilesApp from './apps/FilesApp';
+import CalendarApp from './apps/CalendarApp';
+import CalculatorApp from './apps/CalculatorApp';
+import SettingsApp from './apps/SettingsApp';
+import DictionaryApp from './apps/DictionaryApp';
 
 interface TaskSwitcherProps {
   isOpen: boolean;
@@ -12,6 +22,7 @@ interface TaskSwitcherProps {
   currentApps: AppInstance[];
   onRestore: (combo: TaskCombination) => void;
   onClearTasks: () => void;
+  splitRatios?: number[];
 }
 
 const TaskSwitcher: React.FC<TaskSwitcherProps> = ({ 
@@ -20,7 +31,8 @@ const TaskSwitcher: React.FC<TaskSwitcherProps> = ({
   combinations, 
   currentApps,
   onRestore,
-  onClearTasks
+  onClearTasks,
+  splitRatios
 }) => {
   
   // Create a list of active task units from current apps
@@ -28,20 +40,36 @@ const TaskSwitcher: React.FC<TaskSwitcherProps> = ({
     if (currentApps.length === 0) return [];
     
     const floatingApps = currentApps.filter(a => a.state === 'floating');
-    const layoutApps = currentApps.filter(a => a.state !== 'floating');
+    const maximizedApps = currentApps.filter(a => a.state === 'maximized');
+    const splitApps = currentApps.filter(a => a.state && a.state.startsWith('split-'));
 
     const tasks: TaskCombination[] = [];
 
-    // Group layout apps together as one task unit
-    if (layoutApps.length > 0) {
+    // Group split apps together as one task unit
+    if (splitApps.length > 0) {
       tasks.push({
-        id: 'active-layout-task',
-        name: layoutApps.length > 1 ? '窗口布局单元' : (layoutApps[0].title || layoutApps[0].type),
-        apps: layoutApps.map(a => ({ type: a.type, state: a.state })),
+        id: 'active-split-task',
+        name: splitApps.length > 1 ? '窗口布局单元' : (splitApps[0].title || splitApps[0].type),
+        apps: splitApps.map(a => ({ type: a.type, state: a.state })),
         mode: 'regular',
-        color: 'blue'
+        color: 'blue',
+        splitRatios: splitRatios || [0.5, 0.66],
+        timestamp: Date.now()
       });
     }
+
+    // Each maximized app is its own task unit
+    maximizedApps.forEach(app => {
+      tasks.push({
+        id: `active-maximized-${app.id}`,
+        name: app.title || app.type,
+        apps: [{ type: app.type, state: app.state }],
+        mode: 'regular',
+        color: 'indigo',
+        splitRatios: splitRatios || [0.5, 0.66],
+        timestamp: Date.now()
+      });
+    });
 
     // Each floating app is its own task unit
     floatingApps.forEach(app => {
@@ -50,107 +78,208 @@ const TaskSwitcher: React.FC<TaskSwitcherProps> = ({
         name: app.title || app.type,
         apps: [{ type: app.type, state: app.state }],
         mode: 'regular',
-        color: 'indigo'
+        color: 'indigo',
+        splitRatios: splitRatios || [0.5, 0.66],
+        timestamp: Date.now()
       });
     });
 
     return tasks;
-  }, [currentApps]);
+  }, [currentApps, splitRatios]);
 
   const allTasks = useMemo(() => {
     const saved = combinations.filter(c => c.mode !== 'toolring');
     return [...activeTasks, ...saved];
   }, [activeTasks, combinations]);
 
-  const renderAppContentPreview = (type: AppType, config: any) => {
+  const renderLiveAppContent = (type: AppType, state: WindowState, appsToPass: AppInstance[]) => {
     switch (type) {
-      case 'CALENDAR':
-        return (
-          <div className="space-y-1.5">
-            <div className="grid grid-cols-7 gap-0.5 opacity-60">
-              {[...Array(21)].map((_, i) => (
-                <div key={i} className={`aspect-square rounded-[1px] ${i === 12 ? 'bg-blue-400' : 'bg-slate-100'}`} />
-              ))}
-            </div>
-            <div className="h-1 w-2/3 bg-slate-200 rounded-full" />
+      case AppType.NOTES: return <NotesApp state={state} />;
+      case AppType.BROWSER: return <BrowserApp state={state} />;
+      case AppType.AI_ASSISTANT: return <GeminiApp apps={appsToPass} state={state} />;
+      case AppType.FILES: return <FilesApp state={state} />;
+      case AppType.CALENDAR: return <CalendarApp state={state} />;
+      case AppType.CALCULATOR: return <CalculatorApp state={state} />;
+      case AppType.SETTINGS: return <SettingsApp />;
+      case AppType.DICTIONARY: return <DictionaryApp state={state} />;
+      case AppType.WHITEBOARD: return (
+        <div className="flex flex-col h-full bg-slate-50 overflow-hidden relative">
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#4F46E5 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          <div className="flex-1 flex items-center justify-center relative">
+             <div className="text-center">
+                <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                   <Plus className="text-slate-300" size={32} />
+                </div>
+                <h3 className="text-slate-800 font-black text-lg mb-2">开始您的创意之旅</h3>
+                <p className="text-slate-400 text-sm font-medium">双击此处或拖入素材以初始化画布</p>
+             </div>
           </div>
-        );
-      case 'FILES':
+        </div>
+      );
+      case AppType.CLOUD_DRIVE: {
+        const isFourGrid = state && (state.includes('top') || state.includes('bottom'));
         return (
-          <div className="space-y-1.5 h-full">
-            <div className="grid grid-cols-2 gap-1 px-0.5">
-              <div className="aspect-square bg-blue-50/80 rounded border border-blue-100 flex items-center justify-center">
-                <div className="w-2 h-2 bg-blue-300 rounded-sm" />
+          <div className="flex flex-col h-full bg-slate-50">
+            {!isFourGrid && (
+              <div className="h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 text-indigo-600 font-bold">
+                    <Cloud size={18} />
+                    <span className="text-sm">Nexus Drive</span>
+                  </div>
+                  <div className="h-4 w-px bg-slate-200" />
+                  <div className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                    <Folder size={12} />
+                    <span>我的文件</span>
+                    <span className="text-slate-300">/</span>
+                    <span className="text-slate-800">英语学习</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input className="bg-slate-100 rounded-full py-1.5 pl-9 pr-4 text-[11px] w-48 focus:outline-none" placeholder="搜索文件..." />
+                  </div>
+                </div>
               </div>
-              <div className="aspect-square bg-amber-50/80 rounded border border-amber-100 flex items-center justify-center">
-                <div className="w-2 h-2 bg-amber-300 rounded-sm" />
+            )}
+            
+            <div className={`flex-1 ${isFourGrid ? 'p-4' : 'p-6'} overflow-y-auto`}>
+              <div className={`grid ${isFourGrid ? 'grid-cols-2' : 'grid-cols-3'} gap-4`}>
+                <div className="group bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer">
+                  <div className="aspect-video bg-indigo-50 rounded-xl mb-4 flex items-center justify-center text-indigo-400 relative overflow-hidden">
+                     <FileVideo size={32} />
+                     <div className="absolute inset-x-0 bottom-0 h-1 bg-indigo-200" />
+                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center opacity-100">
+                        <Play size={12} fill="currentColor" className="text-indigo-600 ml-0.5" />
+                     </div>
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-slate-800 mb-1 truncate">六级真题解析.mp4</h4>
+                  </div>
+                </div>
+
+                <div className="group bg-white border border-slate-200 rounded-2xl p-4 cursor-pointer">
+                  <div className="aspect-video bg-slate-50 rounded-xl mb-4 flex items-center justify-center text-slate-300">
+                     <Folder size={32} />
+                  </div>
+                  <div>
+                    <h4 className="text-[13px] font-bold text-slate-800 mb-1">精听素材库</h4>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="space-y-1 mt-1">
-              <div className="h-1 w-full bg-slate-100 rounded-full" />
-              <div className="h-1 w-5/6 bg-slate-100 rounded-full" />
-            </div>
           </div>
         );
-      case 'AI_ASSISTANT':
-        return (
-          <div className="space-y-2 h-full flex flex-col justify-end">
-            <div className="flex justify-end pr-1">
-              <div className="h-3 w-4/5 bg-blue-100 rounded-l-lg rounded-tr-lg" />
-            </div>
-            <div className="flex gap-1 pl-1">
-              <div className="w-2 h-2 rounded-full bg-blue-200 shrink-0 mt-0.5" />
-              <div className="h-4 w-full bg-slate-100 rounded-r-lg rounded-tl-lg" />
-            </div>
-          </div>
-        );
-      case 'CALCULATOR':
-        return (
-          <div className="grid grid-cols-4 gap-0.5">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className={`aspect-square rounded ${i > 7 ? 'bg-amber-100' : 'bg-slate-100'}`} />
-            ))}
-          </div>
-        );
+      }
       default:
-        return (
-          <div className="space-y-2">
-            <div className="h-1.5 w-1/2 bg-slate-200 rounded-full" />
-            <div className="space-y-1.5">
-              <div className="h-1 w-full bg-slate-100 rounded-full" />
-              <div className="h-1 w-5/6 bg-slate-100 rounded-full" />
-            </div>
-            <div className="aspect-video bg-slate-50 border border-slate-100 rounded" />
-          </div>
-        );
+        return <div className="p-8 text-slate-400 italic text-sm">此应用目前正处于原型开发阶段。</div>;
     }
   };
 
   const renderPreview = (combo: TaskCombination) => {
+    // If we have sidebar left or right in this combo
+    const hasSidebarLeft = combo.apps.some(a => a.state === 'split-sidebar-left');
+    const hasSidebarRight = combo.apps.some(a => a.state === 'split-sidebar-right');
+    const isTripleVertical = combo.apps.some(a => a.state === 'split-middle');
+    
+    const sidebarWidthPct = 12; // 12% width proportion inside the preview
+    const lOffset = hasSidebarLeft ? sidebarWidthPct : 0;
+    const rOffset = hasSidebarRight ? sidebarWidthPct : 0;
+    const workingWidthPct = 100 - lOffset - rOffset;
+    
+    const rRatios = combo.splitRatios || [0.5, 0.66];
+
     return (
-      <div className="relative w-full h-full bg-white/40 rounded-2xl overflow-hidden border border-white/60 shadow-sm group-hover:border-blue-200 transition-colors">
-        {/* Mock Desktop background */}
-        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#64748B 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+      <div className="relative w-full h-full bg-slate-900 rounded-2xl overflow-hidden shadow-inner border border-white/20 group-hover:border-blue-500/50 transition-colors">
+        {/* Workspace wallpaper simulator background */}
+        <div className="absolute inset-x-0 top-0 bottom-0 bg-gradient-to-tr from-[#1E293B] via-[#0F172A] to-[#1E1B4B] opacity-95" />
+        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: 'radial-gradient(#ffffff 1.5px, transparent 1.5px)', backgroundSize: '16px 16px' }} />
         
         {combo.apps.map((app, i) => {
           const config = APP_CONFIG[app.type];
           let style: React.CSSProperties = {};
 
-          if (app.state === 'maximized') {
-             style = { width: '100%', height: '100%', top: 0, left: 0 };
-          } else if (app.state === 'split-left' || app.state === 'split-sidebar-left') {
-             style = { width: app.state === 'split-sidebar-left' ? '25%' : '50%', height: '100%', top: 0, left: 0 };
-          } else if (app.state === 'split-right' || app.state === 'split-sidebar-right') {
-             style = { width: app.state === 'split-sidebar-right' ? '25%' : '50%', height: '100%', top: 0, right: 0 };
-          } else if (app.state === 'split-top') {
-             style = { width: '100%', height: '50%', top: 0, left: 0 };
-          } else if (app.state === 'split-bottom') {
-             style = { width: '100%', height: '50%', bottom: 0, left: 0 };
+          if (app.state === 'split-sidebar-left') {
+            style = {
+              left: 0,
+              width: `${sidebarWidthPct}%`,
+              height: '100%',
+              top: 0
+            };
+          } else if (app.state === 'split-sidebar-right') {
+            style = {
+              right: 0,
+              width: `${sidebarWidthPct}%`,
+              height: '100%',
+              top: 0
+            };
+          } else if (app.state === 'split-left') {
+            style = {
+              left: `${lOffset}%`,
+              width: `${rRatios[0] * workingWidthPct}%`,
+              height: '100%',
+              top: 0
+            };
+          } else if (app.state === 'split-left-top') {
+            style = {
+              left: `${lOffset}%`,
+              width: `${rRatios[0] * workingWidthPct}%`,
+              height: '50%',
+              top: 0
+            };
+          } else if (app.state === 'split-left-bottom') {
+            style = {
+              left: `${lOffset}%`,
+              width: `${rRatios[0] * workingWidthPct}%`,
+              height: '50%',
+              top: '50%'
+            };
           } else if (app.state === 'split-middle') {
-             style = { width: '33.3%', height: '100%', top: 0, left: '33.3%' };
+            style = {
+              left: `${lOffset + rRatios[0] * workingWidthPct}%`,
+              width: `${(rRatios[1] - rRatios[0]) * workingWidthPct}%`,
+              height: '100%',
+              top: 0
+            };
+          } else if (app.state === 'split-right') {
+            const startRatio = isTripleVertical ? rRatios[1] : rRatios[0];
+            style = {
+              right: `${rOffset}%`,
+              width: `${(1 - startRatio) * workingWidthPct}%`,
+              height: '100%',
+              top: 0
+            };
+          } else if (app.state === 'split-right-top') {
+            style = {
+              right: `${rOffset}%`,
+              width: `${(1 - rRatios[0]) * workingWidthPct}%`,
+              height: '50%',
+              top: 0
+            };
+          } else if (app.state === 'split-right-bottom') {
+            style = {
+              right: `${rOffset}%`,
+              width: `${(1 - rRatios[0]) * workingWidthPct}%`,
+              height: '50%',
+              top: '50%'
+            };
+          } else if (app.state === 'maximized') {
+            style = {
+              left: 0,
+              width: '100%',
+              height: '100%',
+              top: 0
+            };
           } else {
-             // Floating
-             style = { width: '64%', height: '64%', top: '18%', left: '18%', zIndex: 10 };
+             // Floating Window overlay
+             style = {
+               width: '64%',
+               height: '64%',
+               top: '18%',
+               left: '18%',
+               zIndex: 10
+             };
           }
 
           return (
@@ -159,24 +288,30 @@ const TaskSwitcher: React.FC<TaskSwitcherProps> = ({
               className="absolute p-0.5"
               style={style}
             >
-              <div className="w-full h-full bg-white rounded-lg shadow-md border border-slate-200 overflow-hidden flex flex-col">
-                {/* Mock Window Header */}
-                <div className="h-4 bg-slate-50 border-b border-slate-100 flex items-center px-1.5 gap-1 shrink-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-rose-400/50" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400/50" />
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/50" />
+              <div className="w-full h-full bg-white/95 rounded-xl shadow-xl border border-slate-200/80 overflow-hidden flex flex-col pointer-events-none select-none">
+                {/* Miniature Beautiful Window Header */}
+                <div className="h-4 bg-slate-50 border-b border-slate-100 flex items-center px-1.5 gap-1 shrink-0 select-none">
+                  <div className="w-1 h-1 rounded-full bg-rose-400" />
+                  <div className="w-1 h-1 rounded-full bg-amber-400" />
+                  <div className="w-1 h-1 rounded-full bg-emerald-400" />
                   <div className="flex-1" />
-                  <div className="text-[6px] font-black text-slate-400 uppercase tracking-tighter truncate max-w-[40px]">{app.type}</div>
+                  <div className="text-[6px] font-black text-slate-500 uppercase tracking-tighter truncate max-w-[80px]">{config?.name || app.type}</div>
                 </div>
-                {/* Mock Window Content */}
-                <div className="flex-1 p-2 overflow-hidden bg-white">
-                   <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-4 h-4 rounded-md ${config.color} flex items-center justify-center shrink-0`}>
-                        {React.cloneElement(config.icon as React.ReactElement, { size: 10, className: 'text-white' })}
-                      </div>
-                      <div className="h-1.5 w-1/2 bg-slate-200 rounded-full" />
-                   </div>
-                   {renderAppContentPreview(app.type, config)}
+                {/* Scale Live Window Content */}
+                <div className="flex-1 relative overflow-hidden bg-white select-none">
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '380%',
+                    height: '380%',
+                    transform: 'scale(0.263)',
+                    transformOrigin: 'top left',
+                    pointerEvents: 'none',
+                    userSelect: 'none'
+                  }}>
+                    {renderLiveAppContent(app.type, app.state, currentApps)}
+                  </div>
                 </div>
               </div>
             </div>

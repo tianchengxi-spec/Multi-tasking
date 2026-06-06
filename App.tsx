@@ -1051,6 +1051,7 @@ const App: React.FC = () => {
             onClose={() => setIsTaskSwitcherOpen(false)}
             combinations={savedCombinations}
             currentApps={apps.filter(a => a.state !== 'minimized' && a.state !== 'floating-icon')}
+            splitRatios={splitRatios}
             onRestore={(combo) => {
               setApps(prev => {
                 const minimized = prev.map(a => ({ ...a, state: 'minimized' as WindowState }));
