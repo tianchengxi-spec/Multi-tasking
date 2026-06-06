@@ -19,7 +19,7 @@ const DeadlineWidget: React.FC = () => {
           <h3 className="text-slate-900 font-bold text-lg tracking-tight">近期 DDL</h3>
           <span className="bg-rose-500 w-2 h-2 rounded-full animate-pulse" />
         </div>
-        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+        <span className="text-white bg-slate-900/30 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest self-start">
           {tasks.filter(t => !t.completed).length} Pending Tasks
         </span>
       </div>
@@ -40,7 +40,7 @@ const DeadlineWidget: React.FC = () => {
             </div>
             <span className={`text-[13px] leading-tight font-medium transition-all ${
               task.completed 
-                ? 'text-slate-400 line-through decoration-emerald-500/30' 
+                ? 'text-white/80 line-through decoration-emerald-500/50 bg-slate-900/10 px-1.5 py-0.5 rounded' 
                 : 'text-slate-700'
             }`}>
               {task.text}
