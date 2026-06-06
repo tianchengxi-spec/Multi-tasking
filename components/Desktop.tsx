@@ -56,6 +56,7 @@ interface DesktopProps {
   onToggleTopmost?: (id: string) => void;
   savedCombinations?: TaskCombination[];
   onRestoreCombination?: (combo: TaskCombination) => void;
+  hoveredQuadState?: WindowState | null;
 }
 
 const getAppIcon = (type: AppType) => {
@@ -105,7 +106,8 @@ const Desktop: React.FC<DesktopProps> = ({
   onTogglePin,
   onToggleTopmost,
   savedCombinations = [],
-  onRestoreCombination
+  onRestoreCombination,
+  hoveredQuadState = null
 }) => {
   const isTripleVertical = useMemo(() => apps.some(a => a.state === 'split-middle'), [apps]);
   const hasSidebarLeft = useMemo(() => apps.some(a => a.state === 'split-sidebar-left'), [apps]);
@@ -263,6 +265,7 @@ const Desktop: React.FC<DesktopProps> = ({
           isSwappingOver={swappingOverId === app.id}
           onTogglePin={() => onTogglePin?.(app.id)}
           onToggleTopmost={() => onToggleTopmost?.(app.id)}
+          isHoveredForReplacement={hoveredQuadState === app.state}
         >
           {renderAppContent(app)}
         </AppWindow>

@@ -22,6 +22,7 @@ interface AppWindowProps {
   isSwappingOver?: boolean;
   onTogglePin?: () => void;
   onToggleTopmost?: () => void;
+  isHoveredForReplacement?: boolean;
 }
 
 const AppWindow: React.FC<AppWindowProps> = ({ 
@@ -40,7 +41,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isSwapping = false,
   isSwappingOver = false,
   onTogglePin,
-  onToggleTopmost
+  onToggleTopmost,
+  isHoveredForReplacement = false
 }) => {
   const config = APP_CONFIG[app.type];
   
@@ -189,13 +191,21 @@ const AppWindow: React.FC<AppWindowProps> = ({
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 400, damping: 30, mass: 1 }}
       style={style}
-      className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive && !isIconOnly ? 'ring-2 ring-blue-500/30' : ''}`}
+      className={`${getWindowStateClasses()} flex flex-col bg-white/95 backdrop-blur-md border-slate-200 select-none ${isActive && !isIconOnly ? 'ring-2 ring-blue-500/30' : ''} ${isHoveredForReplacement ? 'saturate-[0.1] opacity-70 border-3 border-dashed border-blue-500/40' : ''} transition-all duration-300`}
       onClick={() => onFocus(app.id)}
     >
       {!isSidebar && isSwappingOver && (
         <div className="absolute inset-0 bg-white/40 border-[6px] border-white/60 z-[1000] pointer-events-none rounded-none animate-pulse flex items-center justify-center">
            <div className="px-4 py-2 bg-white/80 backdrop-blur-md rounded-full shadow-xl border border-white/50">
               <span className="text-xs font-black text-slate-800 uppercase tracking-widest">放手以调换位置</span>
+           </div>
+        </div>
+      )}
+      {!isSidebar && isHoveredForReplacement && (
+        <div className="absolute inset-0 bg-slate-900/10 pointer-events-none z-[1000] flex flex-col items-center justify-center p-4">
+           <div className="px-5 py-3 bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-blue-500/30 text-center animate-bounce flex flex-col items-center gap-1">
+              <span className="text-xs font-black text-blue-600 tracking-wide">将会替换下方应用</span>
+              <span className="text-[10px] text-slate-500">原应用将收起为图标</span>
            </div>
         </div>
       )}

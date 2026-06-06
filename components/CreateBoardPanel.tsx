@@ -290,9 +290,9 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
                         </div>
                         <span className="text-[11px] font-bold text-blue-400">
                           {selectedApps.length === 1 && "单窗口聚焦"}
-                          {selectedApps.length === 2 && "主辅分屏 (6:4)"}
-                          {selectedApps.length === 3 && "三屏仪表盘"}
-                          {selectedApps.length >= 4 && "四宫格指挥中心"}
+                          {selectedApps.length === 2 && "双栏并列分屏 (6:4)"}
+                          {selectedApps.length === 3 && "三栏并列分屏 (1:1:1)"}
+                          {selectedApps.length >= 4 && "三栏并列 (第4个应用最小化)"}
                         </span>
                       </div>
 
@@ -310,19 +310,21 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
                            )}
                            {selectedApps.length === 3 && (
                              <div className="w-full h-full flex gap-1">
-                               <div className="w-[40%] h-full bg-[#0873FF]/30 rounded-md border border-[#0873FF]/40" />
-                               <div className="w-[60%] h-full flex flex-col gap-1">
+                               <div className="w-[33%] h-full bg-[#0873FF]/30 rounded-md border border-[#0873FF]/40" />
+                               <div className="w-[33%] h-full bg-blue-200/40 rounded-md border border-blue-300/50" />
+                               <div className="w-[34%] h-full bg-blue-100/40 rounded-md border border-blue-200/50" />
+                               <div style={{ display: 'none' }} className="w-0 flex flex-col gap-1">
                                   <div className="h-1/2 bg-blue-200/40 rounded-md border border-blue-300/50" />
                                   <div className="h-1/2 bg-blue-100/40 rounded-md border border-blue-200/50" />
                                </div>
                              </div>
                            )}
                            {selectedApps.length >= 4 && (
-                             <div className="w-full h-full grid grid-cols-2 grid-rows-2 gap-1">
-                               <div className="bg-[#0873FF]/30 rounded-md border border-[#0873FF]/40" />
-                               <div className="bg-blue-400/30 rounded-md border border-blue-400/40" />
-                               <div className="bg-blue-300/30 rounded-md border border-blue-300/40" />
-                               <div className="bg-blue-200/30 rounded-md border border-blue-200/40" />
+                             <div className="w-full h-full flex gap-1">
+                               <div className="w-[33%] h-full bg-[#0873FF]/30 rounded-md border border-[#0873FF]/40" />
+                               <div className="w-[33%] h-full bg-blue-200/40 rounded-md border border-blue-300/50" />
+                               <div className="w-[34%] h-full bg-blue-100/40 rounded-md border border-blue-200/50" />
+                               <div className="hidden bg-blue-200/30 rounded-md border border-blue-200/40" />
                              </div>
                            )}
                         </div>
@@ -330,8 +332,8 @@ const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, on
                           <p className="text-[11px] text-blue-900/60 leading-relaxed font-medium">
                             {selectedApps.length === 1 && "最佳单窗口操作体验，专注核心任务。"}
                             {selectedApps.length === 2 && "左右 6:4 比例，平衡核心输出与参考资料。"}
-                            {selectedApps.length === 3 && "左侧主视口 + 右侧双辅助，适合多维数据监控。"}
-                            {selectedApps.length >= 4 && "全屏网格覆盖，快速穿梭于四个核心应用。"}
+                            {selectedApps.length === 3 && "左中右三栏一键均衡分屏，完美匹配多主窗协作。"}
+                            {selectedApps.length >= 4 && "限制前台渲染 3 个垂直分屏应用，其余将一键挂载至任务卡。"}
                           </p>
                         </div>
                       </div>

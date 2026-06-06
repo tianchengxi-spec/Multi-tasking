@@ -61,6 +61,7 @@ const App: React.FC = () => {
   const [resizingDividerIndex, setResizingDividerIndex] = useState<number | null>(null);
 
   const [dragIcon, setDragIcon] = useState<DragIconState | null>(null);
+  const [hoveredQuadState, setHoveredQuadState] = useState<WindowState | null>(null);
   const [activeTriggerZone, setActiveTriggerZone] = useState<'left' | 'right' | 'floating' | 'divider' | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -168,6 +169,74 @@ const App: React.FC = () => {
     const newZIndex = zIndexCounter + 1;
     const screenWidth = window.innerWidth;
 
+    // Verify if 3 vertically split apps already exist and user adds a new one (not floating, and not currently visible in the splits)
+    const splitColumns: WindowState[] = ['split-left', 'split-middle', 'split-right'];
+    const currentSplitApps = apps.filter(a => splitColumns.includes(a.state));
+
+    if (currentSplitApps.length === 3 && forceState !== 'floating') {
+      const isExistingInSplit = existingApp && currentSplitApps.some(a => a.id === existingApp.id);
+      if (!isExistingInSplit) {
+        // Find the least active app (lowest zIndex) in currentSplitApps
+        const victim = [...currentSplitApps].sort((a, b) => a.zIndex - b.zIndex)[0];
+        const victimState = victim.state;
+
+        // Determine destination sidebar
+        const hasLeftSidebar = apps.some(a => a.state === 'split-sidebar-left');
+        const hasRightSidebar = apps.some(a => a.state === 'split-sidebar-right');
+        
+        let destinationSidebar: WindowState = 'split-sidebar-left';
+        if (!hasLeftSidebar) {
+          destinationSidebar = 'split-sidebar-left';
+        } else if (!hasRightSidebar) {
+          destinationSidebar = 'split-sidebar-right';
+        } else {
+          destinationSidebar = 'split-sidebar-left';
+        }
+
+        setApps(prev => {
+          let updated = prev.map(a => {
+            // Minimize existing occupant of target sidebar first
+            if (a.state === destinationSidebar) {
+              return {
+                ...a,
+                state: 'minimized' as WindowState,
+                zIndex: 0
+              };
+            }
+            if (a.id === victim.id) {
+              return { 
+                ...a, 
+                state: destinationSidebar,
+                zIndex: newZIndex - 1
+              };
+            }
+            return a;
+          });
+
+          const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
+          const newAppInstance = {
+            id: newId,
+            type,
+            title: type,
+            state: victimState,
+            zIndex: newZIndex,
+            position: { x: 0, y: 0 },
+            size: { width: '33%', height: '100%' }
+          };
+
+          if (existingApp) {
+            return updated.map(a => a.id === existingApp.id ? newAppInstance : a);
+          }
+          return [...updated, newAppInstance];
+        });
+
+        setActiveAppId(existingApp?.id || 'new-app-temp-id');
+        setZIndexCounter(newZIndex + 1);
+        setSplitRatios([0.33, 0.66]);
+        return;
+      }
+    }
+
     // Quad-tile Detection & Replacement Logic
     const quadTileStates: WindowState[] = ['split-left-top', 'split-left-bottom', 'split-right-top', 'split-right-bottom'];
     const quadAppsInField = apps.filter(a => quadTileStates.includes(a.state));
@@ -266,6 +335,7 @@ const App: React.FC = () => {
       if (leftApp && rightApp) {
         setApps(prev => {
           let updated = prev.map(a => {
+            if (a.id === leftApp.id) return { ...a, state: 'split-left' as WindowState };
             if (a.id === rightApp.id) return { ...a, state: 'split-right-top' as WindowState };
             return a;
           });
@@ -283,11 +353,12 @@ const App: React.FC = () => {
           return [...updated, newAppInstance];
         });
         setSplitRatios([0.5, 0.66]);
-      } 
-      else if (leftApp && rightT && rightB) {
+      } else if (leftApp && rightT && rightB) {
         setApps(prev => {
           let updated = prev.map(a => {
             if (a.id === leftApp.id) return { ...a, state: 'split-left-top' as WindowState };
+            if (a.id === rightT.id) return { ...a, state: 'split-right-top' as WindowState };
+            if (a.id === rightB.id) return { ...a, state: 'split-right-bottom' as WindowState };
             return a;
           });
           const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
@@ -580,14 +651,33 @@ const App: React.FC = () => {
       
       // Divider Sensitivity
       const dividerX = splitRatios[0] * screenWidth;
-      const isDiv = (isDualSplit || isTSplit || isFourGridFull) && Math.abs(x - dividerX) < 40 && y > 100 && y < screenHeight - 100;
+      const isDiv = !isFourGridFull && (isDualSplit || isTSplit) && Math.abs(x - dividerX) < 40 && y > 100 && y < screenHeight - 100;
 
       // Basic Overlaps
-      const isOverL = !isFloating && !isDiv && hasBackgroundApp && x < leftBoundary;
-      const isOverR = !isFloating && !isDiv && hasBackgroundApp && x > rightBoundary;
+      const isOverL = !isFourGridFull && !isFloating && !isDiv && hasBackgroundApp && x < leftBoundary;
+      const isOverR = !isFourGridFull && !isFloating && !isDiv && hasBackgroundApp && x > rightBoundary;
 
       // Determine current hovered zone (Raw)
-      const currentHoveredZone = isFloating ? 'floating' : (isDiv ? 'divider' : (isOverL ? 'left' : (isOverR ? 'right' : null)));
+      const currentHoveredZone = isFourGridFull ? null : (isFloating ? 'floating' : (isDiv ? 'divider' : (isOverL ? 'left' : (isOverR ? 'right' : null))));
+
+      // Quad-tile hover quadrant detection
+      if (isFourGridFull) {
+        const workingWidth = screenWidth - lOffset - rOffset;
+        const midX = lOffset + splitRatios[0] * workingWidth;
+        const midY = screenHeight / 2;
+        
+        let hoveredQuad: WindowState | null = null;
+        if (x >= lOffset && x <= screenWidth - rOffset) {
+          if (x < midX) {
+            hoveredQuad = y < midY ? 'split-left-top' : 'split-left-bottom';
+          } else {
+            hoveredQuad = y < midY ? 'split-right-top' : 'split-right-bottom';
+          }
+        }
+        setHoveredQuadState(hoveredQuad);
+      } else {
+        setHoveredQuadState(null);
+      }
 
       // 2. Hover Intent Mechanism (350ms delay)
       if (currentHoveredZone !== activeTriggerZone) {
@@ -652,11 +742,55 @@ const App: React.FC = () => {
     }
     setDraggingAppId(null);
     if (dragIcon) {
-      // 3. Drop to Execute: Only if zone is verified (active)
-      if (activeTriggerZone === 'divider') openApp(dragIcon.type, 'split-divider');
-      else if (activeTriggerZone === 'left') openApp(dragIcon.type, 'split-left');
-      else if (activeTriggerZone === 'right') openApp(dragIcon.type, 'split-right');
-      else if (activeTriggerZone === 'floating') openApp(dragIcon.type, 'floating');
+      if (isFourGridFull && hoveredQuadState) {
+        const victim = apps.find(a => a.state === hoveredQuadState);
+        if (victim) {
+          const newZIndex = zIndexCounter + 2;
+          const targetState = hoveredQuadState;
+          const existingApp = apps.find(a => a.type === dragIcon.type);
+          const newId = existingApp?.id || Math.random().toString(36).substr(2, 9);
+          
+          setApps(prev => {
+            let updated = prev.map(a => {
+              if (a.id === victim.id) {
+                return { 
+                  ...a, 
+                  state: 'floating-icon' as WindowState,
+                  zIndex: newZIndex - 1,
+                  position: { x: window.innerWidth - 270 - 40, y: 40 },
+                  size: { width: 270, height: 450 }
+                };
+              }
+              return a;
+            });
+
+            const newAppInstance: AppInstance = {
+              id: newId,
+              type: dragIcon.type,
+              title: dragIcon.type,
+              state: targetState,
+              zIndex: newZIndex,
+              position: { x: 0, y: 0 },
+              size: { width: '50%', height: '50%' }
+            };
+
+            if (existingApp) {
+              return updated.map(a => a.id === existingApp.id ? newAppInstance : a);
+            }
+            return [...updated, newAppInstance];
+          });
+
+          setActiveAppId(newId);
+          setZIndexCounter(newZIndex + 1);
+        }
+        setHoveredQuadState(null);
+      } else {
+        // 3. Drop to Execute: Only if zone is verified (active)
+        if (activeTriggerZone === 'divider') openApp(dragIcon.type, 'split-divider');
+        else if (activeTriggerZone === 'left') openApp(dragIcon.type, 'split-left');
+        else if (activeTriggerZone === 'right') openApp(dragIcon.type, 'split-right');
+        else if (activeTriggerZone === 'floating') openApp(dragIcon.type, 'floating');
+      }
       
       setDragIcon(null);
       setActiveTriggerZone(null);
@@ -869,6 +1003,7 @@ const App: React.FC = () => {
             onToggleTopmost={toggleTopmost}
             savedCombinations={savedCombinations}
             onRestoreCombination={handleRestoreCombination}
+            hoveredQuadState={hoveredQuadState}
           />
         </motion.div>
       </div>
@@ -1085,20 +1220,22 @@ const App: React.FC = () => {
               <div className={`w-1 h-12 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:h-24 ${resizingDividerIndex === 1 ? 'bg-slate-600 h-32 w-1.5 shadow-lg' : ''}`} />
             </div>
           )}
-          {(isTSplit || isQuadSplit || splitApps.some(a => a.state.startsWith('split-left-'))) && (
+
+          {(isTSplit || isFourGridFull) && (
             <div 
-                className="absolute z-[100] group flex items-center justify-center bg-transparent hover:bg-slate-500/5 transition-colors" 
-                style={{ 
-                    top: '50%', 
-                    height: '16px',
-                    width: isQuadSplit ? '100%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `calc(${splitRatios[0]} * (100% - ${lOffset + rOffset}px))` : `calc(${1-splitRatios[0]} * (100% - ${lOffset + rOffset}px))`),
-                    left: isQuadSplit ? '50%' : (splitApps.some(a => a.state.startsWith('split-left-')) ? `calc(${lOffset}px + ${splitRatios[0]/2} * (100% - ${lOffset + rOffset}px))` : `calc(${lOffset}px + (${splitRatios[0]} + (1 - splitRatios[0]) / 2) * (100% - ${lOffset + rOffset}px))`),
-                    transform: 'translate(-50%, -50%)',
-                }}
+              className="absolute z-[100] flex items-center justify-center bg-transparent pointer-events-none" 
+              style={{ 
+                top: '50%', 
+                height: '1px',
+                width: isFourGridFull ? `calc(100% - ${lOffset + rOffset}px)` : `calc((1 - ${splitRatios[0]}) * (100% - ${lOffset + rOffset}px))`,
+                left: isFourGridFull ? `calc(${lOffset}px + 50% - ${lOffset / 2}px)` : `calc(${lOffset}px + (${splitRatios[0]} + (1 - ${splitRatios[0]}) / 2) * (100% - ${lOffset + rOffset}px))`,
+                transform: 'translate(-50%, -50%)',
+              }}
             >
-                <div className="w-12 h-1 rounded-full bg-slate-300 transition-all duration-300 group-hover:bg-slate-400 group-hover:w-24" />
+              <div className="w-full h-[1px] bg-slate-300/40 backdrop-blur-[0.5px]" />
             </div>
           )}
+
         </>
       )}
 
@@ -1140,7 +1277,7 @@ const App: React.FC = () => {
 
           {activeTriggerZone === 'divider' && (
             <div className="absolute flex items-center justify-center px-4 py-2 bg-[#0873FF]/25 text-blue-900 rounded-full text-xs font-bold shadow-2xl animate-bounce whitespace-nowrap z-[210] border border-blue-200/50" style={{ left: dragIcon.x + 20, top: dragIcon.y - 60 }}>
-              {isFourGridFull ? '替换新任务' : (isTSplit ? '释放以开启四分屏' : '释放以开启三分屏')}
+              {isFourGridFull ? '替换新任务' : (isTSplit ? '释放以开启四宫格分屏' : '释放以开启左1右2双分屏')}
             </div>
           )}
           {hasBackgroundApp && activeTriggerZone !== 'divider' && (
@@ -1217,14 +1354,14 @@ const App: React.FC = () => {
                 if (data.apps.length === 2) state = i === 0 ? 'split-left' : 'split-right';
                 else if (data.apps.length === 3) {
                    if (i === 0) state = 'split-left';
-                   else if (i === 1) state = 'split-right-top';
-                   else state = 'split-right-bottom';
+                   else if (i === 1) state = 'split-middle';
+                   else state = 'split-right';
                 }
                 else if (data.apps.length >= 4) {
-                   if (i === 0) state = 'split-left-top';
-                   else if (i === 1) state = 'split-left-bottom';
-                   else if (i === 2) state = 'split-right-top';
-                   else state = 'split-right-bottom';
+                   if (i === 0) state = 'split-left';
+                   else if (i === 1) state = 'split-middle';
+                   else if (i === 2) state = 'split-right';
+                   else state = 'minimized';
                 }
               } else {
                 // Toolrings are minimized by default in the dock/panel, or we can just save them
@@ -1232,7 +1369,7 @@ const App: React.FC = () => {
               }
               return { type, state };
             }),
-            splitRatios: data.apps.length === 3 && data.mode === 'board' ? [0.5, 0.66] : [0.5, 0.66],
+            splitRatios: data.apps.length >= 3 && data.mode === 'board' ? [0.33, 0.66] : [0.5, 0.66],
             timestamp: Date.now()
           };
           setSavedCombinations(prev => [...prev, newCombo]);
