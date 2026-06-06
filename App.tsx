@@ -31,6 +31,7 @@ const App: React.FC = () => {
   const [zIndexCounter, setZIndexCounter] = useState(10);
   const [isDockVisible, setIsDockVisible] = useState(true);
   const [isCreatorOpen, setIsCreatorOpen] = useState(false);
+  const [creatorInitialApps, setCreatorInitialApps] = useState<AppType[]>([]);
   const [isTaskSwitcherOpen, setIsTaskSwitcherOpen] = useState(false);
   const [isLayoutReconfigOpen, setIsLayoutReconfigOpen] = useState(false);
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false);
@@ -1407,13 +1408,8 @@ const App: React.FC = () => {
               e.stopPropagation();
               const splitApps = apps.filter(a => a.state.startsWith('split-'));
               if (splitApps.length >= 2) {
-                const newCombo: TaskCombination = {
-                  id: Math.random().toString(36).substr(2, 9),
-                  apps: splitApps.map(a => ({ type: a.type, state: a.state })),
-                  splitRatios: [...splitRatios],
-                  timestamp: Date.now()
-                };
-                setSavedCombinations(prev => [...prev, newCombo]);
+                setCreatorInitialApps(splitApps.map(a => a.type));
+                setIsCreatorOpen(true);
                 setShowSaveButton(false);
                 if (window.navigator.vibrate) window.navigator.vibrate([10, 30, 20]);
               }
@@ -1440,6 +1436,7 @@ const App: React.FC = () => {
       <CreateBoardPanel 
         isOpen={isCreatorOpen} 
         onClose={() => setIsCreatorOpen(false)} 
+        initialApps={creatorInitialApps}
         onDeploy={(data) => {
           const newCombo: TaskCombination = {
             id: Math.random().toString(36).substr(2, 9),

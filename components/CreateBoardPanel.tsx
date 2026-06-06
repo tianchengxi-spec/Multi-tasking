@@ -8,6 +8,7 @@ interface CreateBoardPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onDeploy: (data: { title: string; apps: AppType[]; mode: 'board' | 'toolring'; color: string; notes?: string }) => void;
+  initialApps?: AppType[];
 }
 
 const COLOR_OPTIONS = [
@@ -32,12 +33,22 @@ const AVAILABLE_APPS = [
   AppType.DICTIONARY
 ];
 
-const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, onDeploy }) => {
+const CreateBoardPanel: React.FC<CreateBoardPanelProps> = ({ isOpen, onClose, onDeploy, initialApps }) => {
   const [creationMode, setCreationMode] = useState<'board' | 'toolring'>('board');
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [selectedColor, setSelectedColor] = useState('blue');
   const [selectedApps, setSelectedApps] = useState<AppType[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (initialApps && initialApps.length > 0) {
+        setSelectedApps(initialApps);
+      } else {
+        setSelectedApps([]);
+      }
+    }
+  }, [isOpen, initialApps]);
 
   const toggleApp = (appType: AppType) => {
     setSelectedApps(prev => 
