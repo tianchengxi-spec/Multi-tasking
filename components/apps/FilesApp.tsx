@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Grid, List, ChevronRight, HardDrive, Cloud, Clock, Star, Trash2, Search, Folder, LayoutGrid } from 'lucide-react';
 
 interface FilesAppProps {
@@ -10,6 +10,7 @@ const FilesApp: React.FC<FilesAppProps> = ({ state }) => {
   const isSplit = state && state.startsWith('split-');
   const isFourGrid = state && (state.includes('top') || state.includes('bottom'));
   const isNarrow = state === 'floating' || (state && (state.includes('left') || state.includes('right')));
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const folders = [
     { name: '精听素材库', items: '12 个文件', color: 'bg-indigo-100 text-indigo-600' },
@@ -98,32 +99,72 @@ const FilesApp: React.FC<FilesAppProps> = ({ state }) => {
                 />
               </div>
               
-              <button className="flex bg-slate-50 p-1 rounded-xl border border-slate-100 shrink-0">
-                <div className="p-1.5 bg-white shadow-sm rounded-lg text-blue-600"><LayoutGrid size={16} /></div>
-                {!isNarrow && <div className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><List size={16} /></div>}
-              </button>
+              <div className="flex bg-slate-100/80 p-0.5 rounded-xl border border-slate-200/40 shrink-0 gap-0.5">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-1.5 rounded-lg transition-all ${
+                    viewMode === 'grid' 
+                      ? 'bg-white shadow-sm text-blue-600 font-bold' 
+                      : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                  }`}
+                  title="网格视图"
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                {!isNarrow && (
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded-lg transition-all ${
+                      viewMode === 'list' 
+                        ? 'bg-white shadow-sm text-blue-600 font-bold' 
+                        : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'
+                    }`}
+                    title="列表视图"
+                  >
+                    <List size={15} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
 
         <section className={isFourGrid ? 'mb-6' : 'mb-10'}>
           <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">文件夹</h2>
-          <div className={`grid ${isFourGrid ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-4`}>
+          <div className={viewMode === 'grid' 
+            ? `grid ${isFourGrid ? 'grid-cols-2' : 'grid-cols-2 md:grid-cols-4'} gap-4` 
+            : `flex flex-col gap-2`
+          }>
             {folders.map(folder => (
-              <div key={folder.name} className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl transition-all cursor-pointer group">
-                <div className={`w-10 h-10 ${folder.color} rounded-xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform`}>
-                  <HardDrive size={20} />
+              viewMode === 'grid' ? (
+                <div key={folder.name} className="p-4 bg-slate-50 hover:bg-blue-50 border border-slate-100 hover:border-blue-200 rounded-2xl transition-all cursor-pointer group">
+                  <div className={`w-10 h-10 ${folder.color} rounded-xl flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform`}>
+                    <HardDrive size={20} />
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-0.5">{folder.name}</h4>
+                  <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{folder.items}</p>
                 </div>
-                <h4 className="text-sm font-bold text-slate-700 mb-0.5">{folder.name}</h4>
-                <p className="text-[10px] text-slate-400 font-medium uppercase tracking-tighter">{folder.items}</p>
-              </div>
+              ) : (
+                <div key={folder.name} className="flex items-center justify-between p-3 bg-slate-50/50 hover:bg-blue-50/40 border border-slate-100 hover:border-blue-200 rounded-xl transition-all cursor-pointer group">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 ${folder.color} rounded-lg flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform shrink-0`}>
+                      <HardDrive size={16} />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-700">{folder.name}</h4>
+                      <p className="text-[9px] text-slate-400 font-medium uppercase tracking-tighter">{folder.items}</p>
+                    </div>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-300 group-hover:translate-x-0.5 transition-transform mr-1" />
+                </div>
+              )
             ))}
           </div>
         </section>
 
         <section>
           <h2 className="text-sm font-bold text-slate-800 mb-4 px-1">最近文件</h2>
-          <div className="space-y-2">
+          <div className={viewMode === 'grid' ? "space-y-2" : "grid grid-cols-1 md:grid-cols-2 gap-3"}>
             {files.map(file => (
               <div key={file.name} className="flex items-center justify-between p-3 border border-transparent hover:border-slate-100 hover:bg-slate-50 rounded-xl transition-all cursor-pointer group">
                 <div className="flex items-center gap-4">
